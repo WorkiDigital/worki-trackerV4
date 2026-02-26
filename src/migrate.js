@@ -33,15 +33,15 @@ CREATE TABLE IF NOT EXISTS visitors (
   first_utm_medium VARCHAR(100),
   first_utm_campaign VARCHAR(200),
   first_referrer TEXT,
-  device_type VARCHAR(20),
-  device_os VARCHAR(50),
-  device_browser VARCHAR(50),
-  device_screen VARCHAR(20),
+  device_type VARCHAR(100),
+  device_os VARCHAR(200),
+  device_browser VARCHAR(200),
+  device_screen VARCHAR(100),
   total_visits INTEGER DEFAULT 1,
   total_pageviews INTEGER DEFAULT 0,
   total_time_seconds INTEGER DEFAULT 0,
   max_scroll_depth INTEGER DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'visiting',
+  status VARCHAR(100) DEFAULT 'visiting',
   converted BOOLEAN DEFAULT FALSE,
   conversion_value DECIMAL(12,2),
   conversion_source VARCHAR(100),
@@ -67,6 +67,22 @@ DO $$ BEGIN
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS country VARCHAR(100);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(100);
+
+  -- Widen columns to prevent "value too long" errors
+  ALTER TABLE visitors ALTER COLUMN fingerprint TYPE TEXT;
+  ALTER TABLE visitors ALTER COLUMN device_type TYPE VARCHAR(100);
+  ALTER TABLE visitors ALTER COLUMN device_os TYPE VARCHAR(200);
+  ALTER TABLE visitors ALTER COLUMN device_browser TYPE VARCHAR(200);
+  ALTER TABLE visitors ALTER COLUMN device_screen TYPE VARCHAR(100);
+  ALTER TABLE visitors ALTER COLUMN status TYPE VARCHAR(100);
+  
+  ALTER TABLE events ALTER COLUMN event_type TYPE VARCHAR(100);
+  
+  ALTER TABLE sessions ALTER COLUMN device_type TYPE VARCHAR(100);
+  
+  ALTER TABLE conversions ALTER COLUMN payment TYPE VARCHAR(200);
+  ALTER TABLE conversions ALTER COLUMN order_id TYPE VARCHAR(200);
+  
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
@@ -74,7 +90,7 @@ CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
   visitor_id VARCHAR(100) NOT NULL,
   session_id VARCHAR(100),
-  event_type VARCHAR(50) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
   page VARCHAR(500),
   url TEXT,
   data JSONB DEFAULT '{}',
@@ -103,9 +119,9 @@ CREATE TABLE IF NOT EXISTS conversions (
   visitor_id VARCHAR(100) NOT NULL,
   source VARCHAR(100),
   value DECIMAL(12,2),
-  product VARCHAR(300),
-  payment VARCHAR(50),
-  order_id VARCHAR(100),
+  product VARCHAR(500),
+  payment VARCHAR(200),
+  order_id VARCHAR(200),
   data JSONB DEFAULT '{}',
   created_at TIMESTAMP DEFAULT NOW()
 );
