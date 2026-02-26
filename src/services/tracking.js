@@ -335,15 +335,23 @@ const TrackingService = {
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
 
-    // Localização
-    const locations = await db.many(`
-      SELECT COALESCE(state, city, 'Não identificado') as location, COUNT(*) as count
+    // Cidades
+    const cities = await db.many(`
+      SELECT COALESCE(city, 'Não identificado') as city, COUNT(*) as count
       FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
-        AND (state IS NOT NULL OR city IS NOT NULL)
+        AND city IS NOT NULL AND city != ''
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
 
-    return { daily, funnel, devices, sources, locations };
+    // Estados
+    const states = await db.many(`
+      SELECT COALESCE(state, 'Não identificado') as state, COUNT(*) as count
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+        AND state IS NOT NULL AND state != ''
+      GROUP BY 1 ORDER BY 2 DESC LIMIT 10
+    `, [from, to]);
+
+    return { daily, funnel, devices, sources, cities, states };
   },
 
   // ═══════════════════════════════════════
