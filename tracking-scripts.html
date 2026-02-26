@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sua Landing Page</title>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SCRIPT 1: META PIXEL (Facebook Pixel)                               -->
+  <!-- Coloque PRIMEIRO no <head>                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '990028642721674');
+  fbq('track', 'PageView');
+  </script>
+  <noscript>
+    <img height="1" width="1" style="display:none" 
+         src="https://www.facebook.com/tr?id=990028642721674&ev=PageView&noscript=1"/>
+  </noscript>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SCRIPT 2: WORKI TRACKER (Tracking + Geolocalização)                 -->
+  <!-- Coloque DEPOIS do Meta Pixel, ainda no <head>                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+  (function(){ 
+    'use strict'; 
+    
+    const CONFIG = { 
+      endpoint: 'https://tracker.workidigital.tech/api/track/events', 
+      batchInterval: 5000, 
+      scrollThresholds: [25, 50, 75, 90, 100], 
+      debug: false 
+    }; 
+    
+    // ═══ IDENTIFICAÇÃO ÚNICA ═══ 
+    function generateId(prefix){ 
+      const ts = Date.now().toString(36); 
+      const rnd = Math.random().toString(36).substring(2,10); 
+      return prefix + '_' + ts + '_' + rnd; 
+    } 
+    
+    function getVisitorId(){ 
+      let id = localStorage.getItem('wk_vid'); 
+      if(!id){ 
+        id = generateId('wk'); 
+        localStorage.setItem('wk_vid', id); 
+      } 
+      return id; 
+    } 
+    
+    function getSessionId(){ 
+      let id = sessionStorage.getItem('wk_sid'); 
+      if(!id){ 
+        id = generateId('ws'); 
+        sessionStorage.setItem('wk_sid', id); 
+      } 
+      return id; 
+    } 
+    
+    // ═══ FINGERPRINT SIMPLES ═══ 
+    function getFingerprint(){ 
+      const fp = [ 
+        navigator.userAgent, 
+        navigator.language, 
+        screen.width+'x'+screen.height, 
+        screen.colorDepth, 
+        new Date().getTimezoneOffset(), 
+        navigator.hardwareConcurrency || 0, 
+        navigator.maxTouchPoints || 0 
+      ].join('|'); 
+      let hash = 0; 
+      for(let i = 0; i < fp.length; i++){ 
+        hash = ((hash << 5) - hash) + fp.charCodeAt(i); 
+        hash |= 0; 
+      } 
+      return 'fp_' + Math.abs(hash).toString(36); 
+    } 
+    
+    // ═══ UTM + META PARAMS ═══ 
+    function getUTM(){ 
+      const p = new URLSearchParams(window.location.search); 
+      return { 
+        source: p.get('utm_source') || null, 
+        medium: p.get('utm_medium') || null, 
+        campaign: p.get('utm_campaign') || null, 
+        term: p.get('utm_term') || null, 
+        content: p.get('utm_content') || null, 
+        fbclid: p.get('fbclid') || null 
+      }; 
+    } 
+    
+    // ═══ META COOKIES (fbc, fbp) ═══ 
+    function getCookie(name){ 
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')); 
+      return m ? decodeURIComponent(m[1]) : null; 
+    } 
+    
+    // ═══ DEVICE INFO ═══ 
+    function getDevice(){ 
+      const ua = navigator.userAgent; 
+      let type = 'desktop'; 
+      if(/Mobi|Android/i.test(ua)) type = 'mobile'; 
+      else if(/Tablet|iPad/i.test(ua)) type = 'tablet'; 
+      
+      let os = 'unknown'; 
+      if(/Windows/i.test(ua)) os = 'Windows'; 
+      else if(/Mac/i.test(ua)) os = 'macOS'; 
+      else if(/Linux/i.test(ua)) os = 'Linux'; 
+      else if(/Android/i.test(ua)) os = 'Android'; 
+      else if(/iPhone|iPad/i.test(ua)) os = 'iOS'; 
+      
+      let browser = 'unknown'; 
+      if(/Chrome/i.test(ua) && !/Edge/i.test(ua)) browser = 'Chrome'; 
+      else if(/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari'; 
+      else if(/Firefox/i.test(ua)) browser = 'Firefox'; 
+      else if(/Edge/i.test(ua)) browser = 'Edge'; 
+      
+      return { 
+        type, 
+        os, 
+        browser, 
+        screen: screen.width+'x'+screen.height 
+      }; 
+    } 
+    
+    // ═══ GEOLOCALIZAÇÃO VIA IP ═══ 
+    let geoData = { 
+      city: null, 
+      state: null, 
+      country: null, 
+      zip_code: null 
+    }; 
+    
+    function fetchGeo(){ 
+      return fetch('https://ip-api.com/json/?fields=city,regionName,country,zip&lang=pt-BR') 
+        .then(function(r){ return r.json(); }) 
+        .then(function(d){ 
+          geoData.city = d.city || null; 
+          geoData.state = d.regionName || null; 
+          geoData.country = d.country || null; 
+          geoData.zip_code = d.zip || null; 
+          if(CONFIG.debug) console.log('[Worki] Geo:', geoData); 
+        }) 
+        .catch(function(){ 
+          // Fallback: tenta outra API 
+          return fetch('https://ipapi.co/json/') 
+            .then(function(r){ return r.json(); }) 
+            .then(function(d){ 
+              geoData.city = d.city || null; 
+              geoData.state = d.region || null; 
+              geoData.country = d.country_name || null; 
+              geoData.zip_code = d.postal || null; 
+            }) 
+            .catch(function(){}); 
+        }); 
+    } 
+    
+    // ═══ FILA DE EVENTOS ═══ 
+    const VID = getVisitorId(); 
+    const SID = getSessionId(); 
+    const FP = getFingerprint(); 
+    let queue = []; 
+    let startTime = Date.now(); 
+    let scrollSent = {}; 
+    
+    function pushEvent(event, data = {}){ 
+      queue.push({ 
+        visitor_id: VID, 
+        session_id: SID, 
+        fingerprint: FP, 
+        event: event, 
+        page: location.pathname, 
+        url: location.href, 
+        timestamp: new Date().toISOString(), 
+        data: data 
+      }); 
+      if(CONFIG.debug) console.log('[Worki]', event, data); 
+    } 
+    
+    function flush(){ 
+      if(queue.length === 0) return; 
+      const batch = queue.splice(0, 50); 
+      const blob = new Blob([JSON.stringify(batch)], {type:'application/json'}); 
+      if(navigator.sendBeacon){ 
+        navigator.sendBeacon(CONFIG.endpoint, blob); 
+      } else { 
+        fetch(CONFIG.endpoint, { 
+          method:'POST', 
+          body:blob, 
+          keepalive:true 
+        }).catch(function(){}); 
+      } 
+    } 
+    
+    // ═══ PAGEVIEW (espera geo carregar) ═══ 
+    fetchGeo().finally(function(){ 
+      pushEvent('pageview', { 
+        utm: getUTM(), 
+        referrer: document.referrer || null, 
+        device: getDevice(), 
+        fbc: getCookie('_fbc') || null, 
+        fbp: getCookie('_fbp') || null, 
+        title: document.title, 
+        geo: geoData 
+      }); 
+      flush(); 
+    }); 
+    
+    // ═══ SCROLL TRACKING ═══ 
+    function getScrollPercent(){ 
+      const h = document.documentElement; 
+      const b = document.body; 
+      const st = window.scrollY || h.scrollTop || b.scrollTop; 
+      const sh = Math.max(h.scrollHeight, b.scrollHeight) - window.innerHeight; 
+      if(sh <= 0) return 100; 
+      return Math.round((st / sh) * 100); 
+    } 
+    
+    let scrollTimer = null; 
+    window.addEventListener('scroll', function(){ 
+      clearTimeout(scrollTimer); 
+      scrollTimer = setTimeout(function(){ 
+        const pct = getScrollPercent(); 
+        CONFIG.scrollThresholds.forEach(function(t){ 
+          if(pct >= t && !scrollSent[t]){ 
+            scrollSent[t] = true; 
+            pushEvent('scroll', { depth: t + '%' }); 
+          } 
+        }); 
+      }, 200); 
+    }, {passive:true}); 
+    
+    // ═══ CLICK TRACKING ═══ 
+    document.addEventListener('click', function(e){ 
+      const el = e.target.closest('a, button, [data-track]'); 
+      if(!el) return; 
+      
+      const href = el.getAttribute('href') || ''; 
+      const text = (el.innerText || '').substring(0, 100).trim(); 
+      const tag = el.tagName.toLowerCase(); 
+      
+      // WhatsApp click 
+      if(href.includes('wa.me') || href.includes('whatsapp') || href.includes('api.whatsapp')){ 
+        const phoneMatch = href.match(/[\d+]{10,}/); 
+        pushEvent('click', { 
+          type:'whatsapp_click', 
+          phone: phoneMatch ? phoneMatch[0] : '', 
+          href: href, 
+          text: text 
+        }); 
+        flush(); 
+        return; 
+      } 
+      
+      // Phone click 
+      if(href.startsWith('tel:')){ 
+        const phone = href.replace('tel:', '').replace(/\D/g, ''); 
+        pushEvent('click', { 
+          type:'phone_click', 
+          phone: phone, 
+          href: href, 
+          text: text 
+        }); 
+        flush(); 
+        return; 
+      } 
+      
+      // General click 
+      pushEvent('click', { 
+        type:'general', 
+        tag: tag, 
+        text: text, 
+        href: href.substring(0, 200), 
+        id: el.id || null, 
+        classes: el.className ? el.className.substring(0, 100) : null 
+      }); 
+    }); 
+    
+    // ═══ FORM TRACKING ═══ 
+    document.addEventListener('submit', function(e){ 
+      const form = e.target; 
+      if(!form || form.tagName !== 'FORM') return; 
+      
+      const fields = {}; 
+      var inputs = form.querySelectorAll('input, select, textarea'); 
+      inputs.forEach(function(inp){ 
+        var name = (inp.name || inp.id || inp.placeholder || '').toLowerCase(); 
+        var val = inp.value; 
+        if(!name || !val) return; 
+        if(inp.type === 'password' || inp.type === 'hidden') return; 
+        
+        if(name.match(/nome|name|full.?name/i)) fields.nome = val; 
+        else if(name.match(/email|e-mail|e_mail/i)) fields.email = val; 
+        else if(name.match(/tel|phone|fone|whats|celular|whatsapp/i)) fields.telefone = val; 
+        else if(name.match(/empresa|company|loja|negocio/i)) fields.empresa = val; 
+        else if(name.match(/instagram|insta|ig/i)) fields.instagram = val; 
+        else fields[name] = val; 
+      }); 
+      
+      if(Object.keys(fields).length > 0){ 
+        pushEvent('form_submit', { 
+          fields: fields, 
+          formId: form.id || null, 
+          formAction: form.action || null 
+        }); 
+        flush(); 
+      } 
+    }); 
+    
+    // ═══ PAGE EXIT ═══ 
+    function onExit(){ 
+      var timeOnPage = Math.round((Date.now() - startTime) / 1000); 
+      pushEvent('page_exit', { 
+        time_on_page: timeOnPage, 
+        scroll_depth: getScrollPercent() + '%' 
+      }); 
+      flush(); 
+    } 
+    
+    window.addEventListener('beforeunload', onExit); 
+    document.addEventListener('visibilitychange', function(){ 
+      if(document.visibilityState === 'hidden') onExit(); 
+    }); 
+    
+    // ═══ BATCH SEND ═══ 
+    setInterval(flush, CONFIG.batchInterval); 
+    
+    // ═══ IDENTIFY MANUAL ═══ 
+    window.WorkiTracker = { 
+      identify: function(data){ 
+        pushEvent('identify', data); 
+        flush(); 
+      }, 
+      convert: function(data){ 
+        pushEvent('conversion', data); 
+        flush(); 
+      } 
+    }; 
+    
+    if(CONFIG.debug) console.log('[Worki] Tracker v2.1 iniciado | VID:', VID); 
+  })();
+  </script>
+  
+</head>
+<body>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SEU CONTEÚDO AQUI                                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  
+  <h1>Sua Landing Page</h1>
+  
+  <!-- Exemplo de formulário -->
+  <form id="lead-form">
+    <input type="text" name="nome" placeholder="Nome completo" required>
+    <input type="email" name="email" placeholder="E-mail" required>
+    <input type="tel" name="telefone" placeholder="WhatsApp" required>
+    <input type="text" name="instagram" placeholder="Instagram (opcional)">
+    <button type="submit">Enviar</button>
+  </form>
+  
+  <!-- Exemplo de botão WhatsApp -->
+  <a href="https://wa.me/5511999999999?text=Olá" target="_blank">
+    Falar no WhatsApp
+  </a>
+  
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- OPCIONAL: Conversão manual (para páginas de obrigado)               -->
+  <!-- Cole APENAS na página de obrigado/confirmação                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!--
+  <script>
+  // Dispara conversão manual
+  if(window.WorkiTracker){
+    WorkiTracker.convert({
+      source: 'landing_page',
+      value: 997.00,
+      product: 'Curso XYZ',
+      payment: 'pix'
+    });
+  }
+  
+  // Também envia para Meta Pixel
+  if(window.fbq){
+    fbq('track', 'Purchase', {
+      value: 997.00,
+      currency: 'BRL',
+      content_name: 'Curso XYZ'
+    });
+  }
+  </script>
+  -->
+  
+</body>
+</html>
