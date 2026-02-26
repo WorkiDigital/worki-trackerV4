@@ -20,7 +20,10 @@ app.use(compression());
 const origins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || origins.length === 0 || origins.includes(origin)) return cb(null, true);
+    // Permitir requisições sem origin (mesmo domínio) ou localhost
+    if (!origin || origins.length === 0 || origins.includes(origin) || origin.includes('localhost')) {
+      return cb(null, true);
+    }
     cb(new Error('CORS'));
   },
   credentials: true,
@@ -37,8 +40,8 @@ app.use('/api/dashboard', rateLimit({ windowMs: 60000, max: 60 }), dashboardRout
 app.use('/dashboard', express.static(path.join(__dirname, 'views')));
 app.use(express.static(path.join(__dirname, '../public')));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0', uptime: process.uptime() }));
-app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.0.0' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '5.0.0', uptime: process.uptime() }));
+app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '5.0.0' }));
 
 app.use((err, req, res, next) => {
   console.error('Erro:', err.message);
@@ -47,7 +50,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n══════════════════════════════════════`);
-  console.log(`  WORKI TRACKER v2.0`);
+  console.log(`  WORKI TRACKER v5.0`);
   console.log(`  🚀 Porta ${PORT}`);
   console.log(`  📊 Dashboard: /dashboard/`);
   console.log(`══════════════════════════════════════\n`);

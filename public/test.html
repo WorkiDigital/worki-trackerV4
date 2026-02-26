@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Worki Tracker v5.0</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    .version {
+      color: #764ba2;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 30px;
+    }
+    .info {
+      background: #f7fafc;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .info h3 {
+      color: #2d3748;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .info p {
+      color: #4a5568;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #48bb78;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .status-text {
+      color: #2d3748;
+      font-weight: 600;
+    }
+    form {
+      margin-top: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #2d3748;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    .console {
+      margin-top: 30px;
+      background: #1a202c;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .console-title {
+      color: #48bb78;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .console-log {
+      color: #a0aec0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .whatsapp-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #25D366;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+    .whatsapp-btn:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Teste Worki Tracker</h1>
+    <div class="version">Versão 5.0 - Tracking Ativo</div>
+    
+    <div class="status">
+      <div class="dot"></div>
+      <span class="status-text">Sistema de tracking ativo</span>
+    </div>
+
+    <div class="info">
+      <h3>📊 O que está sendo rastreado:</h3>
+      <p>
+        ✅ PageView com geolocalização (cidade, estado, país)<br>
+        ✅ Device info (tipo, OS, browser)<br>
+        ✅ UTM parameters<br>
+        ✅ Meta cookies (_fbc, _fbp)<br>
+        ✅ Scroll tracking<br>
+        ✅ Click tracking<br>
+        ✅ Form submissions
+      </p>
+    </div>
+
+    <form id="testForm">
+      <div class="form-group">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" placeholder="Seu nome completo" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="telefone">Telefone/WhatsApp:</label>
+        <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="instagram">Instagram:</label>
+        <input type="text" id="instagram" name="instagram" placeholder="@seuinstagram">
+      </div>
+      
+      <button type="submit">Enviar Teste</button>
+    </form>
+
+    <a href="https://wa.me/5511999999999?text=Teste" class="whatsapp-btn" target="_blank">
+      💬 Testar Click WhatsApp
+    </a>
+
+    <div class="console">
+      <div class="console-title">📝 Console de Eventos:</div>
+      <div class="console-log" id="console"></div>
+    </div>
+  </div>
+
+  <!-- WORKI TRACKER v5.0 - LOCAL DEBUG -->
+  <script src="http://localhost:3001/wk-local.js"></script>
+
+  <script>
+    const consoleEl = document.getElementById('console');
+    
+    function log(message) {
+      const time = new Date().toLocaleTimeString('pt-BR');
+      consoleEl.innerHTML += `[${time}] ${message}<br>`;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // Log inicial
+    log('🚀 Página carregada - PageView enviado');
+    log('📍 Buscando geolocalização...');
+
+    // Interceptar console.log do Worki Tracker
+    const originalLog = console.log;
+    console.log = function(...args) {
+      if (args[0] && args[0].includes('[Worki]')) {
+        log(args.join(' '));
+      }
+      originalLog.apply(console, args);
+    };
+
+    // Form submit
+    document.getElementById('testForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      log('📝 Formulário enviado - Lead capturado!');
+      alert('✅ Formulário enviado! Verifique o dashboard em http://localhost:3001/dashboard/');
+    });
+
+    // Scroll tracking
+    let scrollLogged = false;
+    window.addEventListener('scroll', function() {
+      if (!scrollLogged && window.scrollY > 100) {
+        log('📜 Scroll detectado');
+        scrollLogged = true;
+      }
+    });
+
+    // Simular geolocalização após 2 segundos
+    setTimeout(() => {
+      log('✅ Geolocalização obtida (verifique no dashboard)');
+    }, 2000);
+  </script>
+</body>
+</html>
