@@ -23,7 +23,8 @@ app.use(cors({
     if (!origin || origins.length === 0 || origins.includes(origin)) return cb(null, true);
     cb(new Error('CORS'));
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-API-Key', 'X-Webhook-Secret', 'X-Confirm-Delete'],
 }));
 
