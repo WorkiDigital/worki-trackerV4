@@ -35,8 +35,8 @@
 </style>
 </head>
 <body>
-<div class="topbar"><div class="logo">worki<span>/</span>tracker</div><div class="topbar-right"><div class="live-dot"></div><span class="version-tag">v2.6</span></div></div>
-<div class="tabs"><div class="tab active" onclick="switchTab('hub')">Hub</div><div class="tab" onclick="switchTab('leads')">Leads</div><div class="tab" onclick="switchTab('settings')">⚙️ Configurações</div></div>
+<div class="topbar"><div class="logo">worki<span>/</span>tracker</div><div class="topbar-right"><select id="globalProjectSelector" onchange="changeGlobalProject(this.value)" style="background:var(--glass2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:'Outfit';font-size:12px;outline:none"><option value="all">Todos os Projetos</option></select><div class="live-dot"></div><span class="version-tag">v3.0</span></div></div>
+<div class="tabs"><div class="tab active" onclick="switchTab('hub')">Hub</div><div class="tab" onclick="switchTab('leads')">Leads</div><div class="tab" onclick="switchTab('projects')">📁 Projetos</div><div class="tab" onclick="switchTab('settings')">⚙️ Configurações</div></div>
 <div class="container">
 <!-- HUB -->
 <div class="tab-panel active" id="panel-hub">
@@ -58,6 +58,11 @@
   <div class="panel"><div class="panel-header"><h2>Explorador de Leads</h2><div class="filters"><button class="filter-btn active" data-st="all" onclick="filterSt(this)">Todos</button><button class="filter-btn" data-st="visiting" onclick="filterSt(this)">Visitando</button><button class="filter-btn" data-st="identified" onclick="filterSt(this)">Identificados</button><button class="filter-btn" data-st="converted" onclick="filterSt(this)">Convertidos</button><input type="text" class="search-input" placeholder="Buscar..." oninput="searchLeads(this.value)"><button class="btn-danger" onclick="deleteAllLeads()">🗑 Excluir Todos</button></div></div>
   <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Entrada</th><th>Contato</th><th>Cidade</th><th>Estado</th><th>Dispositivo</th><th>Origem</th><th>Meta</th><th>Última Atividade</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbody"><tr><td colspan="11" class="loading">Carregando...</td></tr></tbody></table></div>
   <div class="pagination" id="pag"></div></div>
+</div>
+<!-- PROJECTS -->
+<div class="tab-panel" id="panel-projects">
+  <div class="panel" style="margin-bottom:20px"><div class="panel-header"><h2>Gerenciar Projetos</h2><button class="btn-save" style="padding:6px 14px" onclick="openProjectModal()">+ Novo Projeto</button></div>
+  <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome do Projeto</th><th>FB Pixel ID</th><th>Access Token</th><th>Criado em</th><th>Ações</th></tr></thead><tbody id="projectsBody"><tr><td colspan="6" class="loading">Carregando...</td></tr></tbody></table></div></div>
 </div>
 <!-- SETTINGS -->
 <div class="tab-panel" id="panel-settings">
@@ -139,13 +144,15 @@ fbq('init','990028642721674');<br>
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-header"><h2 id="mtitle">Jornada</h2><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body" id="mbody"></div></div></div>
 <!-- MODAL EDITAR -->
 <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEdit()"><div class="modal"><div class="modal-header"><h2>Editar Lead</h2><button class="modal-close" onclick="closeEdit()">✕</button></div><div class="modal-body"><div class="edit-form"><div class="edit-group"><label>Nome</label><input id="ed-name"></div><div class="edit-group"><label>Email</label><input id="ed-email"></div><div class="edit-group"><label>Telefone</label><input id="ed-phone"></div><div class="edit-group"><label>Instagram</label><input id="ed-instagram"></div><div class="edit-group"><label>Empresa</label><input id="ed-empresa"></div><div class="edit-group"><label>Cidade</label><input id="ed-city"></div><div class="edit-group"><label>Estado</label><input id="ed-state"></div><div class="edit-group"><label>Status</label><select id="ed-status"><option value="visiting">Visitando</option><option value="returning">Retornando</option><option value="identified">Identificado</option><option value="converted">Convertido</option></select></div><div class="edit-actions"><button class="btn-cancel" onclick="closeEdit()">Cancelar</button><button class="btn-save" onclick="saveEdit()">Salvar</button></div></div></div></div></div>
+<!-- MODAL PROJETOS -->
+<div class="modal-overlay" id="projectModal" onclick="if(event.target===this)closeProjectModal()"><div class="modal" style="max-width:500px"><div class="modal-header"><h2 id="projModalTitle">Novo Projeto</h2><button class="modal-close" onclick="closeProjectModal()">✕</button></div><div class="modal-body"><div class="edit-form" style="grid-template-columns:1fr"><input type="hidden" id="projId"><div class="edit-group"><label>Nome do Projeto</label><input id="projName" placeholder="Ex: Lançamento XYZ"></div><div class="edit-group"><label>Meta Pixel ID</label><input id="projPixel" placeholder="Somente números"></div><div class="edit-group"><label>Meta Access Token (CAPI)</label><input id="projToken" placeholder="EAA..."></div><div class="edit-actions"><button class="btn-cancel" onclick="closeProjectModal()">Cancelar</button><button class="btn-save" onclick="saveProject()">Salvar</button></div></div></div></div></div>
 
 <script>
 // ═══ THEME ═══
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('wk_theme',t);document.getElementById('themeToggle').checked=t==='light';document.getElementById('prevDark').classList.toggle('active',t==='dark');document.getElementById('prevLight').classList.toggle('active',t==='light');updateChartColors();if(document.getElementById('df'))document.getElementById('df').style.colorScheme=t;if(document.getElementById('dt'))document.getElementById('dt').style.colorScheme=t}
 function toggleTheme(isLight){setTheme(isLight?'light':'dark')}
 function changeApiKey(){var k=prompt('Nova API Key:')||'';if(k){localStorage.setItem('wk_key',k);API_KEY=k;H['X-API-Key']=k;loadAll()}}
-function copyScript(){var t='<!-- Meta Pixel -->\n<script>\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');\nfbq(\'init\',\'990028642721674\');\n<\/script>\n\n<!-- Worki Tracker -->\n<script src="https://tracker.workidigital.tech/public/wk.js" async><\/script>';navigator.clipboard.writeText(t).then(function(){var b=document.querySelector('.copy-btn');b.textContent='✅ Copiado!';setTimeout(function(){b.textContent='Copiar'},2000)})}
+function copyScript(){var p=projectsData.find(function(x){return x.id==curProject});if(!p)p=projectsData[0];var pix=p?p.fb_pixel_id:'[SEU_PIXEL_ID]';var pid=p?p.id:'1';var t='<!-- Meta Pixel -->\n<script>\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');\nfbq(\'init\',\''+pix+'\');\n<\/script>\n\n<!-- Worki Tracker -->\n<script src="https://tracker.workidigital.tech/public/wk.js" data-project="'+pid+'" async><\/script>';navigator.clipboard.writeText(t).then(function(){var b=document.querySelector('.copy-btn');b.textContent='✅ Copiado!';setTimeout(function(){b.textContent='Copiar'},2000)})}
 function updateChartColors(){var isDark=!document.documentElement.getAttribute('data-theme')||document.documentElement.getAttribute('data-theme')==='dark';Chart.defaults.color=isDark?'#8b95a8':'#4a5568';Chart.defaults.borderColor=isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.06)';loadCharts()}
 (function(){var saved=localStorage.getItem('wk_theme');if(saved)setTheme(saved)})();
 
@@ -154,13 +161,14 @@ var API_KEY=localStorage.getItem('wk_key')||'';
 if(!API_KEY){API_KEY=prompt('API Key:')||'';localStorage.setItem('wk_key',API_KEY)}
 var H={'X-API-Key':API_KEY,'Content-Type':'application/json'};
 var curPage=1,curStatus='all',searchQ='',searchT=null,dateFrom='',dateTo='',charts={},editingVid='';
+var curProject='all',projectsData=[];
 
 async function api(p,opt){opt=opt||{};var r=await fetch(BASE+p,{headers:Object.assign({},H,opt.headers||{}),method:opt.method||'GET',body:opt.body?JSON.stringify(opt.body):undefined});if(!r.ok&&r.status===401){localStorage.removeItem('wk_key');API_KEY=prompt('API Key inválida:')||'';localStorage.setItem('wk_key',API_KEY);H['X-API-Key']=API_KEY;return api(p,opt)}if(!r.ok)throw new Error(r.status);return r.json()}
 function fmt(n){return Number(n||0).toLocaleString('pt-BR')}
 function fmtR(n){return'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
 function fmtDT(d){if(!d)return'—';var dt=new Date(d);return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
-function dp(){var p='';if(dateFrom)p+='&date_from='+dateFrom;if(dateTo)p+='&date_to='+dateTo;return p}
+function dp(){var p='';if(dateFrom)p+='&date_from='+dateFrom;if(dateTo)p+='&date_to='+dateTo;if(curProject!=='all')p+='&project_id='+curProject;return p}
 
 function switchTab(t){document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active')});document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active')});document.querySelector('.tab[onclick*="'+t+'"]').classList.add('active');document.getElementById('panel-'+t).classList.add('active');if(t==='leads')loadLeads()}
 function setPreset(btn){document.querySelectorAll('.date-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');var d=parseInt(btn.dataset.days),t=new Date();if(d===0)dateFrom=dateTo=t.toISOString().split('T')[0];else if(d===1){var y=new Date(t-864e5);dateFrom=dateTo=y.toISOString().split('T')[0]}else{dateTo=t.toISOString().split('T')[0];dateFrom=new Date(t-d*864e5).toISOString().split('T')[0]}document.getElementById('df').value=dateFrom;document.getElementById('dt').value=dateTo;loadAll()}
@@ -186,7 +194,7 @@ sb.innerHTML='<div class="info-box"><div class="info-label">Top Cidade</div><div
 }catch(e){console.error('Charts:',e)}}
 
 // ═══ LEADS TABLE ═══
-async function loadLeads(){try{var p=new URLSearchParams({page:curPage,limit:25});if(curStatus!=='all')p.set('status',curStatus);if(searchQ)p.set('search',searchQ);if(dateFrom)p.set('date_from',dateFrom);if(dateTo)p.set('date_to',dateTo);var d=await api('/leads?'+p);renderLeads(d.leads);renderPag(d.total,d.page,d.limit)}catch(e){document.getElementById('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro. Verifique API Key.</td></tr>'}}
+async function loadLeads(){try{var p=new URLSearchParams({page:curPage,limit:25});if(curStatus!=='all')p.set('status',curStatus);if(curProject!=='all')p.set('project_id',curProject);if(searchQ)p.set('search',searchQ);if(dateFrom)p.set('date_from',dateFrom);if(dateTo)p.set('date_to',dateTo);var d=await api('/leads?'+p);renderLeads(d.leads);renderPag(d.total,d.page,d.limit)}catch(e){document.getElementById('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro. Verifique API Key.</td></tr>'}}
 
 function renderLeads(leads){var tb=document.getElementById('tbody');if(!leads.length){tb.innerHTML='<tr><td colspan="11" class="empty">Nenhum lead</td></tr>';return}
 tb.innerHTML=leads.map(function(l){
@@ -257,7 +265,19 @@ async function saveEdit(){if(!editingVid)return;var data={name:document.getEleme
 async function deleteLead(vid,name){if(!confirm('Excluir "'+name+'" e todos os dados?\n\nNão pode ser desfeito!'))return;try{await api('/leads/'+encodeURIComponent(vid),{method:'DELETE'});loadLeads();loadStats();loadCharts()}catch(e){alert('Erro ao excluir')}}
 async function deleteAllLeads(){var r=prompt('⚠️ CUIDADO!\n\nIsso vai excluir TODOS os leads.\nDigite "DELETAR_TUDO" para confirmar:');if(r!=='DELETAR_TUDO')return;try{await api('/leads',{method:'DELETE',headers:{'X-Confirm-Delete':'DELETAR_TUDO'}});loadLeads();loadStats();loadCharts();alert('✅ Todos os leads excluídos.')}catch(e){alert('Erro')}}
 
-function loadAll(){loadStats();loadCharts();if(document.getElementById('panel-leads').classList.contains('active'))loadLeads()}
+// ═══ PROJETOS ═══
+async function loadProjects(){try{projectsData=await api('/projects');renderProjects();updateProjectDropdown();updateScriptSnippet()}catch(e){document.getElementById('projectsBody').innerHTML='<tr><td colspan="6" class="empty">Erro ao carregar projetos</td></tr>'}}
+function renderProjects(){var tb=document.getElementById('projectsBody');if(!projectsData.length){tb.innerHTML='<tr><td colspan="6" class="empty">Nenhum projeto encontrado</td></tr>';return}tb.innerHTML=projectsData.map(function(p){var atk=p.fb_access_token?p.fb_access_token.substring(0,10)+'…':'—';return '<tr class="lr"><td>'+p.id+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.fb_pixel_id)+'</td><td>'+esc(atk)+'</td><td>'+fmtDT(p.created_at)+'</td><td><div class="act-btns"><button class="act-btn act-edit" onclick="editProject('+p.id+')">✏️</button><button class="act-btn act-del" onclick="deleteProject('+p.id+',\''+esc(p.name).replace(/'/g,"\\'")+'\')">🗑</button></div></td></tr>'}).join('')}
+function updateProjectDropdown(){var sel=document.getElementById('globalProjectSelector');var html='<option value="all">Todos os Projetos</option>'+projectsData.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>'}).join('');sel.innerHTML=html;sel.value=curProject}
+function changeGlobalProject(pid){curProject=pid;loadAll();updateScriptSnippet()}
+function updateScriptSnippet(){var p=projectsData.find(function(x){return x.id==curProject});if(!p)p=projectsData[0];var pix=p?p.fb_pixel_id:'[SEU_PIXEL_ID]';var pid=p?p.id:'1';var box=document.getElementById('scriptBox');if(box)box.innerHTML='<button class="copy-btn" onclick="copyScript()">Copiar</button>&lt;!-- Meta Pixel --&gt;<br>&lt;script&gt;<br>!function(f,b,e,v,n,t,s){...}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');<br>fbq(\'init\',\''+pix+'\');<br>&lt;/script&gt;<br><br>&lt;!-- Worki Tracker --&gt;<br>&lt;script src="https://tracker.workidigital.tech/public/wk.js" data-project="'+pid+'" async&gt;&lt;/script&gt;';}
+function openProjectModal(){document.getElementById('projId').value='';document.getElementById('projName').value='';document.getElementById('projPixel').value='';document.getElementById('projToken').value='';document.getElementById('projModalTitle').textContent='Novo Projeto';document.getElementById('projectModal').classList.add('open')}
+function closeProjectModal(){document.getElementById('projectModal').classList.remove('open')}
+function editProject(id){var p=projectsData.find(function(x){return x.id==id});if(!p)return;document.getElementById('projId').value=p.id;document.getElementById('projName').value=p.name||'';document.getElementById('projPixel').value=p.fb_pixel_id||'';document.getElementById('projToken').value=p.fb_access_token||'';document.getElementById('projModalTitle').textContent='Editar Projeto';document.getElementById('projectModal').classList.add('open')}
+async function saveProject(){var id=document.getElementById('projId').value;var d={name:document.getElementById('projName').value,fb_pixel_id:document.getElementById('projPixel').value,fb_access_token:document.getElementById('projToken').value};try{if(id){await api('/projects/'+id,{method:'PUT',body:d})}else{await api('/projects',{method:'POST',body:d})}closeProjectModal();await loadProjects();loadAll()}catch(e){alert('Erro ao salvar projeto')}}
+async function deleteProject(id,name){if(!confirm('Excluir projeto "'+name+'"? Isso não apagará os leads, mas o script falhará se não for atualizado.'))return;try{await api('/projects/'+id,{method:'DELETE'});if(curProject==id)curProject='all';await loadProjects();loadAll()}catch(e){alert('Erro ao excluir projeto')}}
+
+function loadAll(){loadProjects().then(function(){loadStats();loadCharts();if(document.getElementById('panel-leads').classList.contains('active'))loadLeads()})}
 (function(){var t=new Date();dateTo=t.toISOString().split('T')[0];dateFrom=new Date(t-7*864e5).toISOString().split('T')[0];document.getElementById('df').value=dateFrom;document.getElementById('dt').value=dateTo})();
 loadAll();setInterval(loadStats,30000);
 </script>

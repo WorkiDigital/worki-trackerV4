@@ -6,14 +6,27 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const migration = `
 
 -- ═══════════════════════════════════════════
--- WORKI TRACKER — Database Schema v2.0
--- Meta Ads + Instagram + Geolocalização
+-- WORKI TRACKER — Database Schema v3.0
+-- Multi-Project
 -- ═══════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS projects (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  fb_pixel_id VARCHAR(100),
+  fb_access_token TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create default project
+INSERT INTO projects (id, name) VALUES (1, 'Projeto Principal') ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS visitors (
   id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1,
   visitor_id VARCHAR(100) UNIQUE NOT NULL,
-  fingerprint VARCHAR(50),
+  fingerprint TEXT,
   name VARCHAR(200),
   email VARCHAR(200),
   phone VARCHAR(30),
@@ -54,40 +67,9 @@ CREATE TABLE IF NOT EXISTS visitors (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Safe migration: add new v2 columns if table already exists
-DO $$ BEGIN
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbclid TEXT;
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbc TEXT;
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbp TEXT;
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_ip VARCHAR(45);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_user_agent TEXT;
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS state VARCHAR(100);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS country VARCHAR(100);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20);
-  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(100);
-
-  -- Widen columns to prevent "value too long" errors
-  ALTER TABLE visitors ALTER COLUMN fingerprint TYPE TEXT;
-  ALTER TABLE visitors ALTER COLUMN device_type TYPE VARCHAR(100);
-  ALTER TABLE visitors ALTER COLUMN device_os TYPE VARCHAR(200);
-  ALTER TABLE visitors ALTER COLUMN device_browser TYPE VARCHAR(200);
-  ALTER TABLE visitors ALTER COLUMN device_screen TYPE VARCHAR(100);
-  ALTER TABLE visitors ALTER COLUMN status TYPE VARCHAR(100);
-  
-  ALTER TABLE events ALTER COLUMN event_type TYPE VARCHAR(100);
-  
-  ALTER TABLE sessions ALTER COLUMN device_type TYPE VARCHAR(100);
-  
-  ALTER TABLE conversions ALTER COLUMN payment TYPE VARCHAR(200);
-  ALTER TABLE conversions ALTER COLUMN order_id TYPE VARCHAR(200);
-  
-EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
-
 CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1,
   visitor_id VARCHAR(100) NOT NULL,
   session_id VARCHAR(100),
   event_type VARCHAR(100) NOT NULL,
@@ -99,6 +81,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE TABLE IF NOT EXISTS sessions (
   id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1,
   session_id VARCHAR(100) UNIQUE NOT NULL,
   visitor_id VARCHAR(100) NOT NULL,
   utm_source VARCHAR(100),
@@ -107,7 +90,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   utm_term VARCHAR(200),
   utm_content VARCHAR(200),
   referrer TEXT,
-  device_type VARCHAR(20),
+  device_type VARCHAR(100),
   started_at TIMESTAMP DEFAULT NOW(),
   ended_at TIMESTAMP,
   duration_seconds INTEGER DEFAULT 0,
@@ -116,6 +99,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS conversions (
   id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1,
   visitor_id VARCHAR(100) NOT NULL,
   source VARCHAR(100),
   value DECIMAL(12,2),
@@ -128,6 +112,7 @@ CREATE TABLE IF NOT EXISTS conversions (
 
 CREATE TABLE IF NOT EXISTS whatsapp_messages (
   id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1,
   visitor_id VARCHAR(100),
   phone VARCHAR(30) NOT NULL,
   push_name VARCHAR(200),
@@ -138,7 +123,56 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Índices v2.0
+-- Safe migration: alter tables
+DO $$ BEGIN
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
+  UPDATE visitors SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE events ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
+  UPDATE events SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
+  UPDATE sessions SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE conversions ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
+  UPDATE conversions SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
+  UPDATE whatsapp_messages SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbclid TEXT;
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbc TEXT;
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbp TEXT;
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_ip VARCHAR(45);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_user_agent TEXT;
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS state VARCHAR(100);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(100);
+
+  ALTER TABLE visitors ALTER COLUMN fingerprint TYPE TEXT;
+  ALTER TABLE visitors ALTER COLUMN device_type TYPE VARCHAR(100);
+  ALTER TABLE visitors ALTER COLUMN device_os TYPE VARCHAR(200);
+  ALTER TABLE visitors ALTER COLUMN device_browser TYPE VARCHAR(200);
+  ALTER TABLE visitors ALTER COLUMN device_screen TYPE VARCHAR(100);
+  ALTER TABLE visitors ALTER COLUMN status TYPE VARCHAR(100);
+  
+  ALTER TABLE events ALTER COLUMN event_type TYPE VARCHAR(100);
+  ALTER TABLE sessions ALTER COLUMN device_type TYPE VARCHAR(100);
+  ALTER TABLE conversions ALTER COLUMN payment TYPE VARCHAR(200);
+  ALTER TABLE conversions ALTER COLUMN order_id TYPE VARCHAR(200);
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_projects_id ON projects(id);
+CREATE INDEX IF NOT EXISTS idx_visitors_project ON visitors(project_id);
+CREATE INDEX IF NOT EXISTS idx_events_project ON events(project_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_project ON conversions(project_id);
+
 CREATE INDEX IF NOT EXISTS idx_visitors_visitor_id ON visitors(visitor_id);
 CREATE INDEX IF NOT EXISTS idx_visitors_phone ON visitors(phone);
 CREATE INDEX IF NOT EXISTS idx_visitors_email ON visitors(email);
@@ -163,10 +197,10 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_visitor ON whatsapp_messages(visitor_id)
 `;
 
 async function migrate() {
-  console.log('🔄 Migração v2.0...\n');
+  console.log('🔄 Migração v3.0...\n');
   try {
     await pool.query(migration);
-    console.log('✅ Schema v2.0 OK\n🎉 Migração completa!\n');
+    console.log('✅ Schema v3.0 OK\n🎉 Migração completa!\n');
   } catch (err) {
     console.error('❌ Erro na migração:', err.message);
     process.exit(1);

@@ -2,16 +2,7 @@ const crypto = require('crypto');
 
 class MetaService {
   constructor() {
-    this.pixelId = process.env.FB_PIXEL_ID;
-    this.accessToken = process.env.FB_ACCESS_TOKEN;
     this.apiVersion = 'v19.0';
-    this.enabled = !!(this.pixelId && this.accessToken);
-
-    if (this.enabled) {
-      console.log('✅ Meta CAPI ativo (Pixel:', this.pixelId, ')');
-    } else {
-      console.log('⚠️  Meta CAPI desativado (FB_PIXEL_ID ou FB_ACCESS_TOKEN não configurado)');
-    }
   }
 
   hashSHA256(value) {
@@ -28,8 +19,8 @@ class MetaService {
     return clean;
   }
 
-  async sendEvent(eventName, visitor, data = {}) {
-    if (!this.enabled) return null;
+  async sendEvent(eventName, visitor, data = {}, pixelId, accessToken) {
+    if (!pixelId || !accessToken) return null;
 
     try {
       const now = Math.floor(Date.now() / 1000);
@@ -69,7 +60,7 @@ class MetaService {
         };
       }
 
-      const url = `https://graph.facebook.com/${this.apiVersion}/${this.pixelId}/events?access_token=${this.accessToken}`;
+      const url = `https://graph.facebook.com/${this.apiVersion}/${pixelId}/events?access_token=${accessToken}`;
 
       const response = await fetch(url, {
         method: 'POST',

@@ -4,6 +4,31 @@ const metaService = require('./meta');
 const TrackingService = {
 
   // ═══════════════════════════════════════
+  // PROJETOS
+  // ═══════════════════════════════════════
+  async getProjects() {
+    return db.many('SELECT id, name, fb_pixel_id, fb_access_token, created_at FROM projects ORDER BY created_at ASC');
+  },
+  async createProject(data) {
+    return db.one(
+      'INSERT INTO projects (name, fb_pixel_id, fb_access_token) VALUES ($1, $2, $3) RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token]
+    );
+  },
+  async updateProject(id, data) {
+    return db.one(
+      'UPDATE projects SET name=$1, fb_pixel_id=$2, fb_access_token=$3, updated_at=NOW() WHERE id=$4 RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token, id]
+    );
+  },
+  async deleteProject(id) {
+    const existing = await db.one('SELECT id FROM projects WHERE id=$1', [id]);
+    if (!existing) return null;
+    await db.query('DELETE FROM projects WHERE id=$1', [id]);
+    return { id };
+  },
+
+  // ═══════════════════════════════════════
   // PROCESSAR BATCH DE EVENTOS
   // ═══════════════════════════════════════
   async processEvents(events, reqInfo = {}) {
@@ -12,9 +37,9 @@ const TrackingService = {
       try {
         await this.upsertVisitor(event, reqInfo);
         await db.query(
-          `INSERT INTO events (visitor_id, session_id, event_type, page, url, data)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [event.visitor_id, event.session_id, event.event, event.page, event.url, JSON.stringify(event.data || {})]
+          `INSERT INTO events (project_id, visitor_id, session_id, event_type, page, url, data)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [event.project_id || 1, event.visitor_id, event.session_id, event.event, event.page, event.url, JSON.stringify(event.data || {})]
         );
         switch (event.event) {
           case 'pageview': await this.processPageview(event); break;
@@ -46,13 +71,13 @@ const TrackingService = {
       const device = event.data?.device || {};
       const geo = event.data?.geo || {};
       await db.query(
-        `INSERT INTO visitors (visitor_id, fingerprint, first_utm_source, first_utm_medium,
+        `INSERT INTO visitors (project_id, visitor_id, fingerprint, first_utm_source, first_utm_medium,
          first_utm_campaign, first_referrer, device_type, device_os, device_browser, device_screen,
          fbclid, fbc, fbp, client_ip, client_user_agent, city, state, country, zip_code, instagram)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
          ON CONFLICT (visitor_id) DO NOTHING`,
         [
-          event.visitor_id, event.fingerprint,
+          event.project_id || 1, event.visitor_id, event.fingerprint,
           utm.source, utm.medium, utm.campaign, event.data?.referrer,
           device.type, device.os, device.browser, device.screen,
           utm.fbclid || null, event.data?.fbc || null, event.data?.fbp || null,
@@ -75,12 +100,12 @@ const TrackingService = {
   async processPageview(event) {
     const utm = event.data?.utm || {};
     await db.query(
-      `INSERT INTO sessions (session_id, visitor_id, utm_source, utm_medium, utm_campaign,
+      `INSERT INTO sessions (project_id, session_id, visitor_id, utm_source, utm_medium, utm_campaign,
        utm_term, utm_content, referrer, device_type)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (session_id) DO UPDATE SET pageviews = sessions.pageviews + 1`,
-      [event.session_id, event.visitor_id, utm.source, utm.medium, utm.campaign,
-       utm.term, utm.content, event.data?.referrer, event.data?.device?.type]
+      [event.project_id || 1, event.session_id, event.visitor_id, utm.source, utm.medium, utm.campaign,
+      utm.term, utm.content, event.data?.referrer, event.data?.device?.type]
     );
     const sessionCount = await db.one(
       'SELECT COUNT(DISTINCT session_id) as count FROM sessions WHERE visitor_id = $1',
@@ -137,8 +162,11 @@ const TrackingService = {
 
     // Meta CAPI — Lead event
     const visitor = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
-    if (visitor) {
-      metaService.sendEvent('Lead', visitor, { url: event.url });
+    if (visitor && visitor.project_id) {
+      const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [visitor.project_id]);
+      if (project?.fb_pixel_id && project?.fb_access_token) {
+        metaService.sendEvent('Lead', visitor, { url: event.url }, project.fb_pixel_id, project.fb_access_token);
+      }
     }
   },
 
@@ -156,9 +184,9 @@ const TrackingService = {
   async processConversion(event) {
     const d = event.data || {};
     await db.query(
-      `INSERT INTO conversions (visitor_id, source, value, product, payment, data)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [event.visitor_id, d.source, d.value, d.product, d.payment, JSON.stringify(d)]
+      `INSERT INTO conversions (project_id, visitor_id, source, value, product, payment, data)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [event.project_id || 1, event.visitor_id, d.source, d.value, d.product, d.payment, JSON.stringify(d)]
     );
     const visitor = await db.one('SELECT first_seen FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
     const days = visitor ? Math.ceil((Date.now() - new Date(visitor.first_seen).getTime()) / 86400000) : 0;
@@ -170,7 +198,12 @@ const TrackingService = {
     );
     // Meta CAPI — CompleteRegistration
     const full = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
-    if (full) metaService.sendEvent('CompleteRegistration', full, { value: d.value, product: d.product, url: event.url });
+    if (full && full.project_id) {
+      const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
+      if (project?.fb_pixel_id && project?.fb_access_token) {
+        metaService.sendEvent('CompleteRegistration', full, { value: d.value, product: d.product, url: event.url }, project.fb_pixel_id, project.fb_access_token);
+      }
+    }
   },
 
   async processPageExit(event) {
@@ -195,16 +228,22 @@ const TrackingService = {
     }
     if (!visitor) return { matched: false, reason: 'Nenhum visitante encontrado' };
 
+    const full = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [visitor.visitor_id]);
+    const pId = full?.project_id || 1;
     const days = Math.ceil((Date.now() - new Date(visitor.first_seen).getTime()) / 86400000);
-    await db.query(`INSERT INTO conversions (visitor_id,source,value,product,payment,data) VALUES ($1,$2,$3,$4,$5,$6)`,
-      [visitor.visitor_id, source, value, product, payment, JSON.stringify(data || {})]);
+    await db.query(`INSERT INTO conversions (project_id,visitor_id,source,value,product,payment,data) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [pId, visitor.visitor_id, source, value, product, payment, JSON.stringify(data || {})]);
     await db.query(`UPDATE visitors SET converted=TRUE, conversion_value=$1, conversion_source=$2, conversion_date=NOW(), days_to_convert=$3, status='converted', updated_at=NOW() WHERE visitor_id=$4`,
       [value || 0, source, days, visitor.visitor_id]);
-    await db.query(`INSERT INTO events (visitor_id, event_type, data) VALUES ($1,'conversion',$2)`,
-      [visitor.visitor_id, JSON.stringify({ source, value, product, payment, matched: true })]);
+    await db.query(`INSERT INTO events (project_id, visitor_id, event_type, data) VALUES ($1,$2,'conversion',$3)`,
+      [pId, visitor.visitor_id, JSON.stringify({ source, value, product, payment, matched: true })]);
 
-    const full = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [visitor.visitor_id]);
-    if (full) metaService.sendEvent('CompleteRegistration', full, { value, product });
+    if (full && full.project_id) {
+      const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
+      if (project?.fb_pixel_id && project?.fb_access_token) {
+        metaService.sendEvent('CompleteRegistration', full, { value, product }, project.fb_pixel_id, project.fb_access_token);
+      }
+    }
 
     return { matched: true, visitor_id: visitor.visitor_id, days_to_convert: days };
   },
@@ -246,9 +285,10 @@ const TrackingService = {
   // ═══════════════════════════════════════
   // DASHBOARD — Stats com filtro de data
   // ═══════════════════════════════════════
-  async getStats({ dateFrom, dateTo } = {}) {
+  async getStats({ dateFrom, dateTo, projectId } = {}) {
     let where = '';
     const params = [];
+    if (projectId && projectId !== 'all') { params.push(projectId); where += ` AND project_id = $${params.length}`; }
     if (dateFrom) { params.push(dateFrom); where += ` AND first_seen::date >= $${params.length}`; }
     if (dateTo) { params.push(dateTo); where += ` AND first_seen::date <= $${params.length}`; }
 
@@ -272,9 +312,10 @@ const TrackingService = {
   // ═══════════════════════════════════════
   // DASHBOARD — Gráficos com generate_series
   // ═══════════════════════════════════════
-  async getChartData({ dateFrom, dateTo } = {}) {
+  async getChartData({ dateFrom, dateTo, projectId } = {}) {
     const from = dateFrom || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = dateTo || new Date().toISOString().split('T')[0];
+    const pidOpt = (projectId && projectId !== 'all') ? ` AND project_id = ${parseInt(projectId)}` : '';
 
     // Série temporal com generate_series + LEFT JOIN (sem subqueries correlacionadas)
     const daily = await db.many(`
@@ -283,17 +324,17 @@ const TrackingService = {
       ),
       daily_visitors AS (
         SELECT first_seen::date as day, COUNT(*) as cnt
-        FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+        FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
         GROUP BY 1
       ),
       daily_views AS (
         SELECT created_at::date as day, COUNT(*) as cnt
-        FROM events WHERE event_type='pageview' AND created_at::date >= $1::date AND created_at::date <= $2::date
+        FROM events WHERE event_type='pageview' AND created_at::date >= $1::date AND created_at::date <= $2::date ${pidOpt}
         GROUP BY 1
       ),
       daily_conversions AS (
         SELECT conversion_date::date as day, COUNT(*) as cnt
-        FROM visitors WHERE converted=TRUE AND conversion_date::date >= $1::date AND conversion_date::date <= $2::date
+        FROM visitors WHERE converted=TRUE AND conversion_date::date >= $1::date AND conversion_date::date <= $2::date ${pidOpt}
         GROUP BY 1
       )
       SELECT d.day,
@@ -316,13 +357,13 @@ const TrackingService = {
         COUNT(*) FILTER (WHERE whatsapp_contacted = TRUE) as whatsapp,
         COUNT(*) FILTER (WHERE converted = TRUE) as converted
       FROM visitors
-      WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+      WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
     `, [from, to]);
 
     // Dispositivos
     const devices = await db.many(`
       SELECT COALESCE(device_type, 'unknown') as device, COUNT(*) as count
-      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
       GROUP BY 1 ORDER BY 2 DESC LIMIT 5
     `, [from, to]);
 
@@ -331,14 +372,14 @@ const TrackingService = {
       SELECT COALESCE(first_utm_source, 'direto') as source, COUNT(*) as visitors,
         COUNT(*) FILTER (WHERE converted=TRUE) as conversions,
         COALESCE(SUM(conversion_value) FILTER (WHERE converted=TRUE), 0) as revenue
-      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
 
     // Cidades
     const cities = await db.many(`
       SELECT COALESCE(city, 'Não identificado') as city, COUNT(*) as count
-      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
         AND city IS NOT NULL AND city != ''
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
@@ -346,7 +387,7 @@ const TrackingService = {
     // Estados
     const states = await db.many(`
       SELECT COALESCE(state, 'Não identificado') as state, COUNT(*) as count
-      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
         AND state IS NOT NULL AND state != ''
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
@@ -357,12 +398,13 @@ const TrackingService = {
   // ═══════════════════════════════════════
   // DASHBOARD — Leads com filtros
   // ═══════════════════════════════════════
-  async getLeads({ page = 1, limit = 50, status, search, sort = 'last_seen', order = 'DESC', dateFrom, dateTo }) {
+  async getLeads({ page = 1, limit = 50, status, search, sort = 'last_seen', order = 'DESC', dateFrom, dateTo, projectId }) {
     const offset = (page - 1) * limit;
     let where = [];
     let params = [];
     let i = 1;
 
+    if (projectId && projectId !== 'all') { where.push(`project_id = $${i++}`); params.push(projectId); }
     if (status && status !== 'all') { where.push(`status = $${i++}`); params.push(status); }
     if (search) {
       where.push(`(name ILIKE $${i} OR email ILIKE $${i} OR phone ILIKE $${i} OR empresa ILIKE $${i} OR instagram ILIKE $${i})`);
@@ -444,7 +486,7 @@ const TrackingService = {
   // ═══════════════════════════════════════
   async deleteAllLeads() {
     const count = await db.one('SELECT COUNT(*) as total FROM visitors');
-    
+
     await db.query('DELETE FROM events');
     await db.query('DELETE FROM sessions');
     await db.query('DELETE FROM conversions');
