@@ -37,8 +37,8 @@ app.use('/api/dashboard', rateLimit({ windowMs: 60000, max: 60 }), dashboardRout
 app.use('/dashboard', express.static(path.join(__dirname, 'views')));
 app.use('/public', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.5.0', uptime: process.uptime() }));
-app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.5.0' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.6.0', uptime: process.uptime() }));
+app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.6.0' }));
 
 app.use((err, req, res, next) => {
   console.error('Erro:', err.message);
