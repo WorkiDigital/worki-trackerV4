@@ -72,13 +72,13 @@ const TrackingService = {
       const geo = event.data?.geo || {};
       await db.query(
         `INSERT INTO visitors (project_id, visitor_id, fingerprint, first_utm_source, first_utm_medium,
-         first_utm_campaign, first_referrer, device_type, device_os, device_browser, device_screen,
+         first_utm_campaign, first_utm_term, first_utm_content, first_referrer, device_type, device_os, device_browser, device_screen,
          fbclid, fbc, fbp, client_ip, client_user_agent, city, state, country, zip_code, instagram)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
          ON CONFLICT (visitor_id) DO NOTHING`,
         [
           event.project_id || 1, event.visitor_id, event.fingerprint,
-          utm.source, utm.medium, utm.campaign, event.data?.referrer,
+          utm.source, utm.medium, utm.campaign, utm.term, utm.content, event.data?.referrer,
           device.type, device.os, device.browser, device.screen,
           utm.fbclid || null, event.data?.fbc || null, event.data?.fbp || null,
           reqInfo.ip || null, reqInfo.userAgent || null,
@@ -285,6 +285,17 @@ const TrackingService = {
   // ═══════════════════════════════════════
   // DASHBOARD — Stats com filtro de data
   // ═══════════════════════════════════════
+  async getRealtimeVisitors({ projectId } = {}) {
+    let where = `WHERE last_seen > NOW() - INTERVAL '5 minutes'`;
+    let params = [];
+    if (projectId && projectId !== 'all') {
+      params.push(projectId);
+      where += ` AND project_id = $1`;
+    }
+    const result = await db.one(`SELECT COUNT(*) as count FROM visitors ${where}`, params);
+    return parseInt(result.count);
+  },
+
   async getStats({ dateFrom, dateTo, projectId } = {}) {
     let where = '';
     const params = [];
@@ -392,7 +403,16 @@ const TrackingService = {
       GROUP BY 1 ORDER BY 2 DESC LIMIT 10
     `, [from, to]);
 
-    return { daily, funnel, devices, sources, cities, states };
+    // Campanhas
+    const campaigns = await db.many(`
+      SELECT COALESCE(first_utm_campaign, first_utm_source, 'Desconhecida') as campaign, COUNT(*) as visitors,
+        COUNT(*) FILTER (WHERE converted=TRUE) as conversions,
+        COALESCE(SUM(conversion_value) FILTER (WHERE converted=TRUE), 0) as revenue
+      FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
+      GROUP BY 1 ORDER BY 2 DESC LIMIT 15
+    `, [from, to]);
+
+    return { daily, funnel, devices, sources, cities, states, campaigns };
   },
 
   // ═══════════════════════════════════════
@@ -418,9 +438,28 @@ const TrackingService = {
     const s = allowed.includes(sort) ? sort : 'last_seen';
     const o = order === 'ASC' ? 'ASC' : 'DESC';
 
-    const leads = await db.many(`SELECT * FROM visitors ${wc} ORDER BY ${s} ${o} LIMIT $${i++} OFFSET $${i++}`, [...params, limit, offset]);
+    const leads = await db.many(`
+      SELECT *,
+      (
+        COALESCE(total_visits, 0) * 10 
+        + COALESCE(total_pageviews, 0) * 5 
+        + COALESCE(max_scroll_depth, 0) / 2
+        + CASE WHEN whatsapp_contacted THEN 50 ELSE 0 END
+        + CASE WHEN converted THEN 100 ELSE 0 END
+      ) as score
+      FROM visitors ${wc} ORDER BY ${s} ${o} LIMIT $${i++} OFFSET $${i++}
+    `, [...params, limit, offset]);
+
+    // Process lead temperatures
+    const processedLeads = leads.map(l => {
+      let temp = 'cold';
+      if (l.score >= 80 || l.converted || l.whatsapp_contacted) temp = 'hot';
+      else if (l.score >= 40) temp = 'warm';
+      return { ...l, temperature: temp };
+    });
+
     const total = await db.one(`SELECT COUNT(*) as count FROM visitors ${wc}`, params);
-    return { leads, total: parseInt(total.count), page, limit };
+    return { leads: processedLeads, total: parseInt(total.count), page, limit };
   },
 
   async getLeadJourney(visitorId) {

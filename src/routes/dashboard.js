@@ -56,6 +56,14 @@ router.get('/charts', async (req, res) => {
   } catch (err) { console.error('Erro charts:', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+router.get('/realtime', async (req, res) => {
+  try {
+    const { project_id } = req.query;
+    const active = await TrackingService.getRealtimeVisitors({ projectId: project_id });
+    res.json({ active });
+  } catch (err) { console.error('Erro realtime:', err); res.status(500).json({ error: 'Erro interno' }); }
+});
+
 router.get('/leads', async (req, res) => {
   try {
     const { page, limit, status, search, sort, order, date_from, date_to, project_id } = req.query;

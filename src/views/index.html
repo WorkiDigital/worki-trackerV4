@@ -85,7 +85,7 @@
       height: 200%;
       background: radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.03), transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.03), transparent 50%);
       pointer-events: none;
-      z-index: 0
+      z-index: -1;
     }
 
     [data-theme="light"] body::before {
@@ -94,6 +94,26 @@
 
     .settings-section {
       margin-bottom: 28px
+    }
+
+    @keyframes pulse-live {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.7);
+      }
+
+      70% {
+        opacity: 0.7;
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(0, 212, 170, 0);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 212, 170, 0);
+      }
     }
 
     .settings-title {
@@ -1365,10 +1385,17 @@
           </button>
         </div>
         <div class="topbar-right"><select id="globalProjectSelector" onchange="changeGlobalProject(this.value)"
-            style="background:var(--glass2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:'Outfit';font-size:12px;outline:none">
+            style="background:var(--glass2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:'Outfit';font-size:12px;outline:none;margin-right:12px">
             <option value="all">Todos os Projetos</option>
           </select>
-          <div class="live-dot"></div><span class="version-tag">v3.0</span>
+          <div class="realtime-widget" id="realtimeWidget"
+            style="display:flex;align-items:center;background:var(--emerald-g);padding:4px 12px;border-radius:20px;border:1px solid rgba(0,212,170,0.3);font-size:12px;color:var(--emerald);font-weight:700;gap:8px;margin-right:12px;">
+            <div class="live-indicator"
+              style="width:8px;height:8px;background:var(--emerald);border-radius:50%;animation:pulse-live 2s infinite;">
+            </div>
+            <span id="realtimeCount">...</span> online agora
+          </div>
+          <span class="version-tag">v3.0</span>
         </div>
       </div>
       <div class="scroll-area">
@@ -1443,6 +1470,30 @@
                 <div id="summaryBox" style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
               </div>
             </div>
+
+            <div class="panel" style="margin-bottom: 24px;">
+              <div class="panel-header">
+                <h2>🎯 Performance por Campanha</h2>
+              </div>
+              <div class="table-wrap">
+                <table style="min-width: 800px">
+                  <thead>
+                    <tr>
+                      <th>Campanha (UTM)</th>
+                      <th>Cliques / Visitors</th>
+                      <th>Leads</th>
+                      <th>Conversões</th>
+                      <th>Receita</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbCampaigns">
+                    <tr>
+                      <td colspan="5" class="loading">Carregando...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           <!-- LEADS -->
           <div class="tab-panel" id="panel-leads">
@@ -1454,14 +1505,18 @@
                     onclick="filterSt(this)">Visitando</button><button class="filter-btn" data-st="identified"
                     onclick="filterSt(this)">Identificados</button><button class="filter-btn" data-st="converted"
                     onclick="filterSt(this)">Convertidos</button><input type="text" class="search-input"
-                    placeholder="Buscar..." oninput="searchLeads(this.value)"><button class="btn-danger"
-                    onclick="deleteAllLeads()">🗑 Excluir Todos</button></div>
+                    placeholder="Buscar..." oninput="searchLeads(this.value)">
+                  <button class="btn-save" style="padding:5px 12px;font-size:11px;" onclick="exportCSV()">📥 Exportar
+                    CSV</button>
+                  <button class="btn-danger" onclick="deleteAllLeads()">🗑 Excluir Todos</button>
+                </div>
               </div>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
                       <th>Lead</th>
+                      <th>Temp.</th>
                       <th>Entrada</th>
                       <th>Contato</th>
                       <th>Cidade</th>
@@ -1660,7 +1715,8 @@
           <div class="edit-group"><label>Nome do Projeto</label><input id="projName" placeholder="Ex: Lançamento XYZ">
           </div>
           <div class="edit-group"><label>Meta Pixel ID</label><input id="projPixel" placeholder="Somente números"></div>
-          <div class="edit-group"><label>Meta Access Token (CAPI)</label><input id="projToken" placeholder="EAA...">
+          <div class="edit-group"><label>Meta Access Token (CAPI)</label><input type="password" id="projToken"
+              placeholder="EAA...">
           </div>
           <div class="edit-actions"><button class="btn-cancel" onclick="closeProjectModal()">Cancelar</button><button
               class="btn-save" onclick="saveProject()">Salvar</button></div>
@@ -1674,7 +1730,18 @@
     function setTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('wk_theme', t); document.getElementById('themeToggle').checked = t === 'light'; document.getElementById('prevDark').classList.toggle('active', t === 'dark'); document.getElementById('prevLight').classList.toggle('active', t === 'light'); updateChartColors(); if (document.getElementById('df')) document.getElementById('df').style.colorScheme = t; if (document.getElementById('dt')) document.getElementById('dt').style.colorScheme = t }
     function toggleTheme(isLight) { setTheme(isLight ? 'light' : 'dark') }
     function changeApiKey() { var k = prompt('Nova API Key:') || ''; if (k) { localStorage.setItem('wk_key', k); API_KEY = k; H['X-API-Key'] = k; loadAll() } }
-    function copyScript() { var p = projectsData.find(function (x) { return x.id == curProject }); if (!p) p = projectsData[0]; var pix = p ? p.fb_pixel_id : '[SEU_PIXEL_ID]'; var pid = p ? p.id : '1'; var t = '<!-- Meta Pixel -->\n<script>\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');\nfbq(\'init\',\' ' +pi x +'\');\n<\/script>\n\n<!-- Worki Tracker -->\n<script src="https://tracker.workidigital.tech/public/wk.js" data-project=" ' +pi d +'" async><\/script>' ;navigator.clipboard.writeText(t).then(functio n( ) {var  b =document.querySelector('.copy-btn') ;b.textConten t ='✅ Copiado!' ;setTimeout(functio n( ) {b.textConten t ='Copiar '} ,2000 )} )}
+    function copyScript() {
+      var p = projectsData.find(function (x) { return x.id == curProject });
+      if (!p) p = projectsData[0];
+      var pix = p ? p.fb_pixel_id : '[SEU_PIXEL_ID]';
+      var pid = p ? p.id : '1';
+      var t = '<!-- Meta Pixel -->\n<script>\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');\nfbq(\'init\',\'' + pix + '\');\n<\\/script>\n\n<!-- Worki Tracker -->\n<script src="https://tracker.workidigital.tech/public/wk.js" data-project="' + pid + '" async><\\/script>';
+      navigator.clipboard.writeText(t).then(function () {
+        var b = document.querySelector('.copy-btn');
+        b.textContent = '✅ Copiado!';
+        setTimeout(function () { b.textContent = 'Copiar' }, 2000);
+      });
+    }
     function updateChartColors() { var isDark = !document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-theme') === 'dark'; Chart.defaults.color = isDark ? '#8b95a8' : '#4a5568'; Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'; loadCharts() }
     (function () { var saved = localStorage.getItem('wk_theme'); if (saved) setTheme(saved) })();
 
@@ -1699,7 +1766,20 @@
     function customDate() { document.querySelectorAll('.date-btn').forEach(function (b) { b.classList.remove('active') }); dateFrom = document.getElementById('df').value; dateTo = document.getElementById('dt').value; loadAll() }
 
     // ═══ STATS ═══
-    async function loadStats() { try { var s = await api('/stats?' + dp().replace('&', '')); document.getElementById('s1').textContent = fmt(s.total_visitors); document.getElementById('s1s').textContent = fmt(s.active_7d) + ' ativos 7d'; document.getElementById('s2').textContent = fmt(s.identified_leads); document.getElementById('s2s').textContent = fmt(s.whatsapp_contacts) + ' WhatsApp'; document.getElementById('s3').textContent = fmt(s.conversions); document.getElementById('s3s').textContent = (s.conversion_rate || 0) + '% taxa'; document.getElementById('s4').textContent = fmtR(s.total_revenue); document.getElementById('s4s').textContent = 'Média ' + (s.avg_days_to_convert || '—') + ' dias'; document.getElementById('s5').textContent = fmt(s.instagram_leads); document.getElementById('s5s').textContent = 'com @instagram'; document.getElementById('s6').textContent = fmt(s.meta_leads); document.getElementById('s6s').textContent = 'fbclid/fbc' } catch (e) { } }
+    async function loadStats() { try { var p = new URLSearchParams(); if (dateFrom) p.set('date_from', dateFrom); if (dateTo) p.set('date_to', dateTo); if (curProject !== 'all') p.set('project_id', curProject); var d = await api('/stats?' + p); document.getElementById('s1').innerText = fmt(d.total_visitors); document.getElementById('s1s').innerHTML = '<span class="trend up">+' + fmt(d.active_7d) + ' ativos (7d)</span>'; document.getElementById('s2').innerText = fmt(d.identified_leads); document.getElementById('s2s').innerText = 'Contatos salvos'; document.getElementById('s3').innerText = fmt(d.conversions); document.getElementById('s3s').innerHTML = '<span class="trend up">' + d.conversion_rate + '% tb. conv.</span>'; document.getElementById('s4').innerText = fmtR(d.total_revenue); document.getElementById('s4s').innerText = d.avg_days_to_convert + ' dias p/ compra'; document.getElementById('s5').innerText = fmt(d.instagram_leads); document.getElementById('s5s').innerText = 'Arrobas capturados'; document.getElementById('s6').innerText = fmt(d.meta_leads); document.getElementById('s6s').innerText = 'Tráfego pago (CAPI)' } catch (e) { document.getElementById('s1').innerText = 'ERRO'; document.getElementById('s1s').innerText = 'API Key Inválida ou Falha' } }
+
+    async function loadRealtime() {
+      try {
+        var p = new URLSearchParams();
+        if (curProject !== 'all') p.set('project_id', curProject);
+        var res = await api('/realtime?' + p);
+        if (res && res.active !== undefined) {
+          document.getElementById('realtimeCount').innerText = res.active;
+        }
+      } catch (e) { console.error('Realtime erro:', e); }
+    }
+
+    setInterval(loadRealtime, 10000); // Atualiza a cada 10 segundos
 
     // ═══ CHARTS ═══
     var CL = { emerald: '#00d4aa', cyan: '#22d3ee', blue: '#3b82f6', purple: '#a78bfa', pink: '#f472b6', orange: '#fb923c', yellow: '#fbbf24' };
@@ -1717,6 +1797,14 @@
         dc('sr'); charts.sr = new Chart(document.getElementById('cSources'), { type: 'bar', data: { labels: d.sources.map(function (r) { return r.source }), datasets: [{ label: 'Visitantes', data: d.sources.map(function (r) { return r.visitors }), backgroundColor: CL.blue + '99', borderRadius: 4 }, { label: 'Conversões', data: d.sources.map(function (r) { return r.conversions }), backgroundColor: CL.emerald + '99', borderRadius: 4 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10 } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' } }, x: { grid: { display: false } } } } });
         var sb = document.getElementById('summaryBox'); var tc = cities[0] ? cities[0].city : '—'; var ts = states[0] ? states[0].state : '—'; var to = d.sources[0] ? d.sources[0].source : '—'; var td = d.devices[0] ? d.devices[0].device : '—';
         sb.innerHTML = '<div class="info-box"><div class="info-label">Top Cidade</div><div class="info-val">' + esc(tc) + '</div></div><div class="info-box"><div class="info-label">Top Estado</div><div class="info-val">' + esc(ts) + '</div></div><div class="info-box"><div class="info-label">Top Origem</div><div class="info-val">' + esc(to) + '</div></div><div class="info-box"><div class="info-label">Top Dispositivo</div><div class="info-val">' + esc(td) + '</div></div>';
+
+        var cp = document.getElementById('tbCampaigns');
+        if (cp && d.campaigns) {
+          if (!d.campaigns.length) cp.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma campanha registrada</td></tr>';
+          else cp.innerHTML = d.campaigns.map(function (c) {
+            return '<tr class="lr"><td><strong>' + esc(c.campaign) + '</strong></td><td>' + fmt(c.visitors) + '</td><td>' + fmt(c.leads) + '</td><td>' + fmt(c.conversions) + '</td><td style="color:var(--emerald);font-weight:600">' + fmtR(c.revenue) + '</td></tr>';
+          }).join('');
+        }
       } catch (e) { console.error('Charts:', e) }
     }
 
@@ -1724,7 +1812,7 @@
     async function loadLeads() { try { var p = new URLSearchParams({ page: curPage, limit: 25 }); if (curStatus !== 'all') p.set('status', curStatus); if (curProject !== 'all') p.set('project_id', curProject); if (searchQ) p.set('search', searchQ); if (dateFrom) p.set('date_from', dateFrom); if (dateTo) p.set('date_to', dateTo); var d = await api('/leads?' + p); renderLeads(d.leads); renderPag(d.total, d.page, d.limit) } catch (e) { document.getElementById('tbody').innerHTML = '<tr><td colspan="11" class="empty">Erro. Verifique API Key.</td></tr>' } }
 
     function renderLeads(leads) {
-      var tb = document.getElementById('tbody'); if (!leads.length) { tb.innerHTML = '<tr><td colspan="11" class="empty">Nenhum lead</td></tr>'; return }
+      var tb = document.getElementById('tbody'); if (!leads.length) { tb.innerHTML = '<tr><td colspan="12" class="empty">Nenhum lead</td></tr>'; return }
       tb.innerHTML = leads.map(function (l) {
         var nm = l.name || l.visitor_id.substring(0, 12) + '…';
         var sc = getSrc(l.first_utm_source);
@@ -1733,8 +1821,15 @@
         var ct = [l.email, l.instagram ? '@' + l.instagram : ''].filter(Boolean).join(' · ') || l.phone || '—';
         var hm = (l.fbclid || l.fbc) ? '<span class="meta-badge">META</span>' : '';
         var act = [(l.total_pageviews || 0) + ' pgs', l.whatsapp_contacted ? '💬 WA' : ''].filter(Boolean).join(' · ');
+
+        var tempBadge = '';
+        if (l.temperature === 'hot') tempBadge = '🔥 Quente';
+        else if (l.temperature === 'warm') tempBadge = '☀️ Morno';
+        else tempBadge = '❄️ Frio';
+
         return '<tr class="lr" onclick="openJourney(\'' + l.visitor_id + '\')">'
           + '<td><div class="lead-name">' + esc(nm) + '</div></td>'
+          + '<td><span class="badge" style="background:var(--glass2)">' + tempBadge + '</span></td>'
           + '<td>' + fmtDT(l.first_seen) + '</td>'
           + '<td style="font-size:10px">' + esc(ct) + '</td>'
           + '<td style="font-size:10px">' + esc(l.city || '—') + '</td>'
@@ -1744,9 +1839,33 @@
           + '<td>' + hm + '</td>'
           + '<td><div style="font-size:10px">' + fmtDT(l.last_seen) + '</div><div class="lead-sub">' + act + '</div></td>'
           + '<td><span class="status-badge ' + stC + '"><span class="st-dot"></span>' + stL + '</span></td>'
-          + '<td><div class="act-btns"><button class="act-btn act-edit" onclick="event.stopPropagation();openEdit(\'' + l.visitor_id + '\')">✏️</button><button class="act-btn act-del" onclick="event.stopPropagation();deleteLead(\'' + l.visitor_id + '\',\'' + esc(nm).replace(/'/g, "\\'") + '\')">🗑</button></div></td>'
+          + '<td><div class="act-btns"><button class="act-btn act-edit" onclick="event.stopPropagation();openEdit(\'' + l.visitor_id + '\')">✏️</button><button class="act-btn act-del" onclick="event.stopPropagation();deleteLead(\'' + l.visitor_id + '\',\'' + esc(nm).replace(/\'/g, "\\'") + '\')">🗑</button></div></td>'
           + '</tr>'
       }).join('')
+    }
+
+    async function exportCSV() {
+      try {
+        var p = new URLSearchParams({ page: 1, limit: 10000 });
+        if (curStatus !== 'all') p.set('status', curStatus);
+        if (curProject !== 'all') p.set('project_id', curProject);
+        if (searchQ) p.set('search', searchQ);
+        if (dateFrom) p.set('date_from', dateFrom);
+        if (dateTo) p.set('date_to', dateTo);
+        var res = await api('/leads?' + p);
+        var csv = 'ID,Nome,Email,Telefone,Instagram,Temperatura,Status,Score,Origem,Campanha,Cidade,Estado,Data\n';
+        res.leads.forEach(function (l) {
+          csv += '"' + l.visitor_id + '","' + (l.name || '') + '","' + (l.email || '') + '","' + (l.phone || '') + '","' + (l.instagram || '') + '","' + (l.temperature || '') + '","' + (l.status || '') + '","' + (l.score || 0) + '","' + (l.first_utm_source || '') + '","' + (l.first_utm_campaign || '') + '","' + (l.city || '') + '","' + (l.state || '') + '","' + l.first_seen + '"\n';
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'leads_track.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (e) { alert('Erro ao exportar CSV'); }
     }
 
     function renderPag(t, p, l) { var pg = Math.ceil(t / l), el = document.getElementById('pag'); if (pg <= 1) { el.innerHTML = ''; return } var h = ''; for (var i = 1; i <= Math.min(pg, 10); i++)h += '<button class="pg-btn ' + (i === p ? 'active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>'; el.innerHTML = h }
@@ -1801,7 +1920,7 @@
 
     // ═══ PROJETOS ═══
     async function loadProjects() { try { projectsData = await api('/projects'); renderProjects(); updateProjectDropdown(); updateScriptSnippet() } catch (e) { document.getElementById('projectsBody').innerHTML = '<tr><td colspan="6" class="empty">Erro ao carregar projetos</td></tr>' } }
-    function renderProjects() { var tb = document.getElementById('projectsBody'); if (!projectsData.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Nenhum projeto encontrado</td></tr>'; return } tb.innerHTML = projectsData.map(function (p) { var atk = p.fb_access_token ? p.fb_access_token.substring(0, 10) + '…' : '—'; return '<tr class="lr"><td>' + p.id + '</td><td>' + esc(p.name) + '</td><td>' + esc(p.fb_pixel_id) + '</td><td>' + esc(atk) + '</td><td>' + fmtDT(p.created_at) + '</td><td><div class="act-btns"><button class="act-btn act-edit" onclick="editProject(' + p.id + ')">✏️</button><button class="act-btn act-del" onclick="deleteProject(' + p.id + ',\'' + esc(p.name).replace(/'/g, "\\'") + '\')">🗑</button></div></td></tr>' }).join('') }
+    function renderProjects() { var tb = document.getElementById('projectsBody'); if (!projectsData.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Nenhum projeto encontrado</td></tr>'; return } tb.innerHTML = projectsData.map(function (p) { var atk = p.fb_access_token ? '••••••••••••••••' : '—'; return '<tr class="lr"><td>' + p.id + '</td><td>' + esc(p.name) + '</td><td>' + esc(p.fb_pixel_id) + '</td><td>' + esc(atk) + '</td><td>' + fmtDT(p.created_at) + '</td><td><div class="act-btns"><button class="act-btn act-edit" onclick="editProject(' + p.id + ')">✏️</button><button class="act-btn act-del" onclick="deleteProject(' + p.id + ',\'' + esc(p.name).replace(/'/g, "\\'") + '\')">🗑</button></div></td></tr>' }).join('') }
     function updateProjectDropdown() { var sel = document.getElementById('globalProjectSelector'); var html = '<option value="all">Todos os Projetos</option>' + projectsData.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name) + '</option>' }).join(''); sel.innerHTML = html; sel.value = curProject }
     function changeGlobalProject(pid) { curProject = pid; loadAll(); updateScriptSnippet() }
     function updateScriptSnippet() { var p = projectsData.find(function (x) { return x.id == curProject }); if (!p) p = projectsData[0]; var pix = p ? p.fb_pixel_id : '[SEU_PIXEL_ID]'; var pid = p ? p.id : '1'; var box = document.getElementById('scriptBox'); if (box) box.innerHTML = '<button class="copy-btn" onclick="copyScript()">Copiar</button>&lt;!-- Meta Pixel --&gt;<br>&lt;script&gt;<br>!function(f,b,e,v,n,t,s){...}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');<br>fbq(\'init\',\'' + pix + '\');<br>&lt;/script&gt;<br><br>&lt;!-- Worki Tracker --&gt;<br>&lt;script src="https://tracker.workidigital.tech/public/wk.js" data-project="' + pid + '" async&gt;&lt;/script&gt;'; }
@@ -1813,7 +1932,7 @@
 
     function loadAll() { loadProjects().then(function () { loadStats(); loadCharts(); if (document.getElementById('panel-leads').classList.contains('active')) loadLeads() }) }
     (function () { var t = new Date(); dateTo = t.toISOString().split('T')[0]; dateFrom = new Date(t - 7 * 864e5).toISOString().split('T')[0]; document.getElementById('df').value = dateFrom; document.getElementById('dt').value = dateTo })();
-    loadAll(); setInterval(loadStats, 30000);
+    loadAll(); setInterval(loadStats, 30000); loadRealtime();
     if (localStorage.getItem('wk_sidebar') === '1') document.getElementById('sidebar').classList.add('collapsed');
     switchTab('projects');
   </script>

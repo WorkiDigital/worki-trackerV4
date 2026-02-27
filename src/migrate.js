@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS visitors (
   first_utm_source VARCHAR(100),
   first_utm_medium VARCHAR(100),
   first_utm_campaign VARCHAR(200),
+  first_utm_term VARCHAR(200),
+  first_utm_content VARCHAR(200),
   first_referrer TEXT,
   device_type VARCHAR(100),
   device_os VARCHAR(200),
@@ -144,6 +146,8 @@ DO $$ BEGIN
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbclid TEXT;
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbc TEXT;
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbp TEXT;
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS first_utm_term VARCHAR(200);
+  ALTER TABLE visitors ADD COLUMN IF NOT EXISTS first_utm_content VARCHAR(200);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_ip VARCHAR(45);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS client_user_agent TEXT;
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS city VARCHAR(100);
