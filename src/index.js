@@ -35,6 +35,7 @@ app.use('/api/track', rateLimit({ windowMs: 60000, max: 120 }), trackRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/dashboard', rateLimit({ windowMs: 60000, max: 60 }), dashboardRoutes);
 app.use('/dashboard', express.static(path.join(__dirname, 'views')));
+app.use('/public', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.5.0', uptime: process.uptime() }));
 app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.5.0' }));
