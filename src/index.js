@@ -47,7 +47,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n══════════════════════════════════════`);
-  console.log(`  WORKI TRACKER v2.5`);
+  console.log(`  WORKI TRACKER v2.6`);
   console.log(`  🚀 Porta ${PORT}`);
   console.log(`  📊 Dashboard: /dashboard/`);
   console.log(`══════════════════════════════════════\n`);
