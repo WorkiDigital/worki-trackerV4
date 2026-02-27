@@ -36,8 +36,8 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/dashboard', rateLimit({ windowMs: 60000, max: 60 }), dashboardRoutes);
 app.use('/dashboard', express.static(path.join(__dirname, 'views')));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0', uptime: process.uptime() }));
-app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.0.0' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.5.0', uptime: process.uptime() }));
+app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.5.0' }));
 
 app.use((err, req, res, next) => {
   console.error('Erro:', err.message);
@@ -46,7 +46,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n══════════════════════════════════════`);
-  console.log(`  WORKI TRACKER v2.0`);
+  console.log(`  WORKI TRACKER v2.5`);
   console.log(`  🚀 Porta ${PORT}`);
   console.log(`  📊 Dashboard: /dashboard/`);
   console.log(`══════════════════════════════════════\n`);

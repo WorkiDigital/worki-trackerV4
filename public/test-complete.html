@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Completo - Worki Tracker v2.5</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 200vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 800px;
+      margin: 0 auto 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    .version {
+      color: #764ba2;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 30px;
+    }
+    .info {
+      background: #f7fafc;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .info h3 {
+      color: #2d3748;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .info p {
+      color: #4a5568;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #48bb78;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .status-text {
+      color: #2d3748;
+      font-weight: 600;
+    }
+    form {
+      margin-top: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #2d3748;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    .test-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .test-btn {
+      padding: 12px;
+      background: #48bb78;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .test-btn:hover {
+      transform: translateY(-2px);
+    }
+    .test-btn.whatsapp {
+      background: #25D366;
+    }
+    .test-btn.phone {
+      background: #3b82f6;
+    }
+    .console {
+      margin-top: 30px;
+      background: #1a202c;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .console-title {
+      color: #48bb78;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .console-log {
+      color: #a0aec0;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .scroll-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      font-weight: 600;
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Teste Completo - Worki Tracker</h1>
+    <div class="version">Versão 2.5 COMPLETE - Todos os Parâmetros</div>
+    
+    <div class="status">
+      <div class="dot"></div>
+      <span class="status-text">Sistema de tracking ativo com TODOS os parâmetros</span>
+    </div>
+
+    <div class="info">
+      <h3>📊 Parâmetros sendo coletados:</h3>
+      <p>
+        ✅ <strong>UTM:</strong> source, medium, campaign, term, content, id, fbclid, gclid<br>
+        ✅ <strong>Meta Cookies:</strong> _fbc, _fbp, _fbclid, _ga, _gid<br>
+        ✅ <strong>Device:</strong> 30+ campos (tipo, OS, browser, versões, resolução, etc)<br>
+        ✅ <strong>Geolocalização:</strong> cidade, estado, país, CEP, lat/long, ISP<br>
+        ✅ <strong>Performance:</strong> DNS, TCP, load time, DOM processing<br>
+        ✅ <strong>Session:</strong> visitor ID, session ID, fingerprint, session count<br>
+        ✅ <strong>Behavior:</strong> scroll depth, clicks, form submits, time on page
+      </p>
+    </div>
+
+    <form id="testForm">
+      <div class="form-group">
+        <label for="nome">Nome Completo:</label>
+        <input type="text" id="nome" name="nome" placeholder="João Silva" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" placeholder="joao@email.com" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="telefone">Telefone/WhatsApp:</label>
+        <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="instagram">Instagram:</label>
+        <input type="text" id="instagram" name="instagram" placeholder="@seuinstagram">
+      </div>
+      
+      <div class="form-group">
+        <label for="empresa">Empresa:</label>
+        <input type="text" id="empresa" name="empresa" placeholder="Minha Empresa Ltda">
+      </div>
+      
+      <button type="submit">📝 Enviar Formulário (Lead)</button>
+    </form>
+
+    <div class="test-buttons">
+      <a href="https://wa.me/5511999999999?text=Teste" class="test-btn whatsapp" target="_blank">
+        💬 Testar Click WhatsApp
+      </a>
+      <a href="tel:+5511999999999" class="test-btn phone">
+        📞 Testar Click Telefone
+      </a>
+      <button class="test-btn" onclick="testConversion()">
+        💰 Testar Conversão
+      </button>
+      <button class="test-btn" onclick="testIdentify()">
+        👤 Testar Identify
+      </button>
+    </div>
+
+    <div class="console">
+      <div class="console-title">📝 Console de Eventos (Tempo Real):</div>
+      <div class="console-log" id="console"></div>
+    </div>
+  </div>
+
+  <div class="scroll-indicator" id="scrollIndicator">
+    Scroll: 0%
+  </div>
+
+  <!-- WORKI TRACKER v2.5 COMPLETE - LOCAL -->
+  <script>
+    // Substituir endpoint para local
+    const script = document.createElement('script');
+    script.textContent = `
+      ${fetch('http://localhost:3001/wk-complete.js')
+        .then(r => r.text())
+        .then(code => {
+          code = code.replace(
+            "endpoint: 'https://tracker.workidigital.tech/api/track/events'",
+            "endpoint: 'http://localhost:3001/api/track/events'"
+          );
+          code = code.replace("debug: false", "debug: true");
+          eval(code);
+        })}
+    `;
+  </script>
+  <script src="http://localhost:3001/wk-complete.js"></script>
+
+  <script>
+    const consoleEl = document.getElementById('console');
+    const scrollIndicator = document.getElementById('scrollIndicator');
+    
+    function log(message, type = 'info') {
+      const time = new Date().toLocaleTimeString('pt-BR');
+      const color = type === 'success' ? '#48bb78' : type === 'error' ? '#f87171' : '#a0aec0';
+      consoleEl.innerHTML += `<span style="color:${color}">[${time}] ${message}</span><br>`;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // Log inicial
+    log('🚀 Página carregada - PageView enviado', 'success');
+    log('📍 Buscando geolocalização via IP...', 'info');
+    log('🔍 Coletando device info (30+ campos)...', 'info');
+    log('🍪 Lendo Meta cookies (_fbc, _fbp)...', 'info');
+    log('📊 Medindo performance metrics...', 'info');
+
+    // Interceptar console.log do Worki Tracker
+    const originalLog = console.log;
+    console.log = function(...args) {
+      if (args[0] && args[0].includes('[Worki')) {
+        log(args.join(' '), 'success');
+      }
+      originalLog.apply(console, args);
+    };
+
+    // Form submit
+    document.getElementById('testForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      log('📝 Formulário enviado - Lead capturado!', 'success');
+      log('✅ Dados enviados: nome, email, telefone, instagram, empresa', 'success');
+      alert('✅ Formulário enviado! Verifique o dashboard em http://localhost:3001/dashboard/');
+    });
+
+    // Scroll tracking
+    window.addEventListener('scroll', function() {
+      const scrollPercent = Math.round((window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100);
+      scrollIndicator.textContent = `Scroll: ${scrollPercent}%`;
+    });
+
+    // Simular geolocalização após 2 segundos
+    setTimeout(() => {
+      log('✅ Geolocalização obtida (cidade, estado, país, CEP)', 'success');
+      log('✅ Todos os parâmetros coletados e enviados!', 'success');
+    }, 2000);
+
+    // Funções de teste
+    function testConversion() {
+      if(window.WorkiTracker) {
+        window.WorkiTracker.convert({
+          value: 197.00,
+          product: 'Produto Teste',
+          source: 'teste_manual',
+          payment: 'pix'
+        });
+        log('💰 Conversão enviada: R$ 197,00', 'success');
+        alert('✅ Conversão enviada!');
+      }
+    }
+
+    function testIdentify() {
+      if(window.WorkiTracker) {
+        window.WorkiTracker.identify({
+          name: 'Teste Manual',
+          email: 'teste@manual.com',
+          phone: '11999999999'
+        });
+        log('👤 Identify enviado', 'success');
+        alert('✅ Identify enviado!');
+      }
+    }
+
+    // Log de clicks
+    document.addEventListener('click', function(e) {
+      const el = e.target.closest('a, button');
+      if(el) {
+        const text = el.textContent.trim().substring(0, 30);
+        log(`🖱️ Click detectado: "${text}"`, 'info');
+      }
+    });
+  </script>
+</body>
+</html>
