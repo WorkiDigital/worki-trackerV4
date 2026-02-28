@@ -94,6 +94,21 @@ const TrackingService = {
   // ═══════════════════════════════════════
   // UPSERT VISITOR (v2 com Meta + Geo)
   // ═══════════════════════════════════════
+  async resolveGeo(visitorId, ip) {
+    try {
+      if (ip === '127.0.0.1' || ip === '::1') return;
+      const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,zip&lang=pt-BR`);
+      const data = await response.json();
+      if (data.status === 'success' && data.city) {
+        await db.query(
+          'UPDATE visitors SET city=$1, state=$2, country=$3, zip_code=$4 WHERE visitor_id=$5',
+          [data.city, data.regionName, data.country, data.zip, visitorId]
+        );
+        console.log(`[GEO] Background IP Res: ${ip} -> ${data.city}/${data.regionName} para ${visitorId}`);
+      }
+    } catch (err) {}
+  },
+
   async upsertVisitor(event, reqInfo = {}) {
     const existing = await db.one(
       'SELECT id FROM visitors WHERE visitor_id = $1', [event.visitor_id]

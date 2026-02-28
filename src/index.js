@@ -19,12 +19,8 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 
-const origins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || origins.length === 0 || origins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS'));
-  },
+  origin: true, // Permite qualquer domínio
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-API-Key', 'X-Webhook-Secret', 'X-Confirm-Delete'],
@@ -34,7 +30,7 @@ app.use(express.json({ limit: '100kb' })); // Proteção contra Payload grande
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Rate Limit reforçado contra DDoS
-const trackLimiter = rateLimit({ windowMs: 60 * 1000, max: 50, message: { error: 'Muitas requisições' } });
+const trackLimiter = rateLimit({ windowMs: 60 * 1000, max: 300, message: { error: 'Muitas requisições' } });
 const dashLimiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
 
 app.use('/api/track', trackLimiter, trackRoutes);

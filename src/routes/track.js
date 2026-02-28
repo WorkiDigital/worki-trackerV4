@@ -49,21 +49,4 @@ router.post('/match', async (req, res) => {
   }
 });
 
-// Geo proxy — resolve CORS, lookup server-side usando IP do visitante
-router.get('/geo', async (req, res) => {
-  try {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-    // ip-api.com funciona em HTTP server-side (sem restrição de CORS)
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,zip&lang=pt-BR`);
-    const data = await response.json();
-    if (data.status === 'success') {
-      res.json({ city: data.city, state: data.regionName, country: data.country, zip_code: data.zip });
-    } else {
-      res.json({ city: null, state: null, country: null, zip_code: null });
-    }
-  } catch (err) {
-    res.json({ city: null, state: null, country: null, zip_code: null });
-  }
-});
-
-module.exports = router;
+\nmodule.exports = router;
