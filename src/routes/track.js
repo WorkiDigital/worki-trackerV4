@@ -49,4 +49,26 @@ router.post('/match', async (req, res) => {
   }
 });
 
+router.get('/geo', async (req, res) => {
+  try {
+    const ip = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.')) {
+      return res.json({});
+    }
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,zip&lang=pt-BR`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      return res.json({
+        city: data.city,
+        state: data.regionName,
+        country: data.country,
+        zip_code: data.zip
+      });
+    }
+    res.json({});
+  } catch (err) {
+    res.json({});
+  }
+});
+
 module.exports = router;

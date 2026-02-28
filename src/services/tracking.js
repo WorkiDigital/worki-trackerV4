@@ -106,7 +106,7 @@ const TrackingService = {
         );
         console.log(`[GEO] Background IP Res: ${ip} -> ${data.city}/${data.regionName} para ${visitorId}`);
       }
-    } catch (err) {}
+    } catch (err) { }
   },
 
   async upsertVisitor(event, reqInfo = {}) {
@@ -134,12 +134,18 @@ const TrackingService = {
         ]
       );
     } else {
+      const geo = event.data?.geo || {};
       await db.query(
         `UPDATE visitors SET last_seen = NOW(), updated_at = NOW(),
          client_ip = COALESCE($2, client_ip),
-         client_user_agent = COALESCE($3, client_user_agent)
+         client_user_agent = COALESCE($3, client_user_agent),
+         city = COALESCE(city, $4),
+         state = COALESCE(state, $5),
+         country = COALESCE(country, $6),
+         zip_code = COALESCE(zip_code, $7)
          WHERE visitor_id = $1`,
-        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null]
+        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null,
+        geo.city || null, geo.state || null, geo.country || null, geo.zip_code || null]
       );
     }
   },
