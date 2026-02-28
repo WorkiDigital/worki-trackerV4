@@ -317,18 +317,22 @@ const TrackingService = {
 
     // 2. Tentar match por telefone já salvo (lidando com DDI e 9º dígito do BR)
     if (!visitor) {
-      let phoneSearch = phone.startsWith('55') ? phone.substring(2) : phone; // Ex: 85992494552
+      let phoneSearch = phone.startsWith('55') ? phone.substring(2) : phone; // Ex: 85992494552 ou 8592494552
       let phoneSem9 = phoneSearch;
+      let phoneCom9 = phoneSearch;
+
       if (phoneSearch.length === 11 && phoneSearch.charAt(2) === '9') {
-        phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3); // Ex: 8592494552
+        phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3);
+      } else if (phoneSearch.length === 10) {
+        phoneCom9 = phoneSearch.substring(0, 2) + '9' + phoneSearch.substring(2);
       }
 
       try {
         const res = await db.query(`
           SELECT visitor_id FROM visitors 
-          WHERE phone=$1 OR phone=$2 OR phone=$3 OR phone=$4 
+          WHERE phone IN ($1, $2, $3, $4, $5, $6) 
           ORDER BY last_seen DESC LIMIT 1
-        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9, phoneCom9, '55' + phoneCom9]);
         if (res.rowCount > 0) visitor = res.rows[0];
       } catch (err) { }
     }
@@ -337,17 +341,21 @@ const TrackingService = {
     if (!visitor) {
       let phoneSearch = phone.startsWith('55') ? phone.substring(2) : phone;
       let phoneSem9 = phoneSearch;
+      let phoneCom9 = phoneSearch;
+
       if (phoneSearch.length === 11 && phoneSearch.charAt(2) === '9') {
         phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3);
+      } else if (phoneSearch.length === 10) {
+        phoneCom9 = phoneSearch.substring(0, 2) + '9' + phoneSearch.substring(2);
       }
 
       try {
         const res = await db.query(`
           SELECT visitor_id FROM events 
           WHERE event_type='click' 
-          AND (data->>'phone'=$1 OR data->>'phone'=$2 OR data->>'phone'=$3 OR data->>'phone'=$4)
+          AND data->>'phone' IN ($1, $2, $3, $4, $5, $6)
           ORDER BY created_at DESC LIMIT 1
-        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9, phoneCom9, '55' + phoneCom9]);
         if (res.rowCount > 0) visitor = res.rows[0];
       } catch (err) { }
     }
