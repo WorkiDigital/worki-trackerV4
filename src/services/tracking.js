@@ -162,6 +162,7 @@ const TrackingService = {
 
   async processClick(event) {
     if (event.data?.type === 'whatsapp_click') {
+      console.log(`[EVENT: click] WhatsApp click registrado para o visitante: ${event.visitor_id}`);
       await db.query(
         `UPDATE visitors SET whatsapp_contacted = TRUE, whatsapp_date = COALESCE(whatsapp_date, NOW())
          WHERE visitor_id = $1`,
@@ -183,6 +184,8 @@ const TrackingService = {
     const phone = (f.telefone || f.phone || f.tel || f.whatsapp || f.celular || '').replace(/\D/g, '') || null;
     const empresa = f.empresa || null;
     const instagram = f.instagram || null;
+
+    console.log(`[EVENT: form_submit] Visitante ${event.visitor_id} submeteu formulário (Nome: ${name}, Telefone: ${phone}, Email: ${email})`);
 
     await db.query(
       `UPDATE visitors SET name=COALESCE($1,name), email=COALESCE($2,email), phone=COALESCE($3,phone),
@@ -215,6 +218,7 @@ const TrackingService = {
 
   async processConversion(event) {
     const d = event.data || {};
+    console.log(`[EVENT: conversion] Nova conversão registrada! Visitante: ${event.visitor_id}, Valor: ${d.value}, Origem: ${d.source}`);
     await db.query(
       `INSERT INTO conversions (project_id, visitor_id, source, value, product, payment, data)
        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
@@ -250,6 +254,7 @@ const TrackingService = {
   // MATCH — Conversão externa
   // ═══════════════════════════════════════
   async matchConversion({ phone, email, source, value, product, payment, data }) {
+    console.log(`[MATCH API] Tentativa de match manual - Phone: ${phone}, Email: ${email}, Source: ${source}, Valor: ${value}`);
     const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
     let visitor = null;
     if (cleanPhone) visitor = await db.one('SELECT visitor_id, first_seen FROM visitors WHERE phone=$1 ORDER BY last_seen DESC LIMIT 1', [cleanPhone]);
