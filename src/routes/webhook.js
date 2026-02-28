@@ -12,8 +12,11 @@ router.post('/whatsapp', async (req, res) => {
 
     // Validar secret se configurado
     const secret = process.env.WEBHOOK_SECRET;
-    if (secret && req.headers['x-webhook-secret'] !== secret) {
-      return res.status(401).json({ error: 'Secret inválido' });
+    if (secret) {
+      const providedSecret = req.headers['x-webhook-secret'] || req.query.secret;
+      if (providedSecret !== secret) {
+        return res.status(401).json({ error: 'Secret inválido' });
+      }
     }
 
     // Verificar se é evento de mensagem
