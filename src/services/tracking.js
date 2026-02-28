@@ -304,7 +304,10 @@ const TrackingService = {
     if (idMatch) {
       const extractedId = idMatch[1];
       console.log(`[WEBHOOK] Magic ID encontrado na mensagem: ${extractedId}`);
-      visitor = await db.oneOrNone('SELECT visitor_id FROM visitors WHERE visitor_id=$1', [extractedId]);
+      try {
+        const res = await db.query('SELECT visitor_id FROM visitors WHERE visitor_id=$1', [extractedId]);
+        if (res.rowCount > 0) visitor = res.rows[0];
+      } catch (err) { }
     }
 
     // 2. Tentar match por telefone já salvo (lidando com DDI e 9º dígito do BR)
@@ -315,11 +318,14 @@ const TrackingService = {
         phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3); // Ex: 8592494552
       }
 
-      visitor = await db.oneOrNone(`
-        SELECT visitor_id FROM visitors 
-        WHERE phone=$1 OR phone=$2 OR phone=$3 OR phone=$4 
-        ORDER BY last_seen DESC LIMIT 1
-      `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+      try {
+        const res = await db.query(`
+          SELECT visitor_id FROM visitors 
+          WHERE phone=$1 OR phone=$2 OR phone=$3 OR phone=$4 
+          ORDER BY last_seen DESC LIMIT 1
+        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+        if (res.rowCount > 0) visitor = res.rows[0];
+      } catch (err) { }
     }
 
     // 3. Fallback: procurar em cliques de whatsapp anteriores
@@ -329,14 +335,16 @@ const TrackingService = {
       if (phoneSearch.length === 11 && phoneSearch.charAt(2) === '9') {
         phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3);
       }
-      const click = await db.oneOrNone(`
-        SELECT visitor_id FROM events 
-        WHERE event_type='click' 
-        AND (data->>'phone'=$1 OR data->>'phone'=$2 OR data->>'phone'=$3 OR data->>'phone'=$4)
-        ORDER BY created_at DESC LIMIT 1
-      `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
 
-      if (click) visitor = click;
+      try {
+        const res = await db.query(`
+          SELECT visitor_id FROM events 
+          WHERE event_type='click' 
+          AND (data->>'phone'=$1 OR data->>'phone'=$2 OR data->>'phone'=$3 OR data->>'phone'=$4)
+          ORDER BY created_at DESC LIMIT 1
+        `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+        if (res.rowCount > 0) visitor = res.rows[0];
+      } catch (err) { }
     }
 
     if (visitor) {
