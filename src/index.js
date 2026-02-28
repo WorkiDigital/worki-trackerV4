@@ -39,8 +39,8 @@ app.use('/api/dashboard', dashLimiter, dashboardRoutes);
 app.use('/dashboard', express.static(path.join(__dirname, 'views')));
 app.use('/public', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.6.0', uptime: process.uptime() }));
-app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '2.6.0' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '4.1.0', uptime: process.uptime() }));
+app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '4.1.0' }));
 
 // CRON JOB: Limpeza do Banco (Roda toda madrugada as 03:00)
 cron.schedule('0 3 * * *', async () => {
@@ -64,7 +64,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n══════════════════════════════════════`);
-  console.log('  WORKI TRACKER v4.0');
+  console.log('  WORKI TRACKER v4.1');
   console.log(`  🚀 Porta ${PORT}`);
   console.log(`  📊 Dashboard: /dashboard/`);
   console.log(`══════════════════════════════════════\n`);

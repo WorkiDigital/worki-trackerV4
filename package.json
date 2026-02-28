@@ -1,6 +1,6 @@
 {
   "name": "worki-tracker",
-  "version": "5.0.0",
+  "version": "4.1.0",
   "description": "Worki Prospect — Lead Journey Tracker v5.0 (Meta CAPI + Dashboard Pro)",
   "main": "src/index.js",
   "scripts": {

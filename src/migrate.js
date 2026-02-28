@@ -6,7 +6,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const migration = `
 
 -- ═══════════════════════════════════════════
--- WORKI TRACKER — Database Schema v3.0
+-- WORKI TRACKER — Database Schema v4.1
 -- Multi-Project
 -- ═══════════════════════════════════════════
 
@@ -204,10 +204,10 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_visitor ON whatsapp_messages(visitor_id)
 `;
 
 async function migrate() {
-  console.log('🔄 Migração v3.0...\n');
+  console.log('🔄 Migração v4.1...\n');
   try {
     await pool.query(migration);
-    console.log('✅ Schema v3.0 OK\n🎉 Migração completa!\n');
+    console.log('✅ Schema v4.1 OK\n🎉 Migração completa!\n');
   } catch (err) {
     console.error('❌ Erro na migração:', err.message);
     process.exit(1);
