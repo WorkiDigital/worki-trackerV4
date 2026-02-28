@@ -10,8 +10,16 @@ router.post('/events', async (req, res) => {
 
     const reqInfo = {
       ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip,
-      userAgent: req.headers['user-agent'] || null
+      userAgent: req.headers['user-agent'] || null,
+      origin: req.headers.origin || req.headers.referer || null
     };
+
+    // First-Party Cookie (ITP bypass)
+    if (events.length > 0 && events[0].visitor_id) {
+      const pid = events[0].project_id || 1;
+      const cname = `wk_vid_${pid}`;
+      res.cookie(cname, events[0].visitor_id, { maxAge: 31536000000, httpOnly: false, sameSite: 'Lax', secure: true });
+    }
 
     const result = await TrackingService.processEvents(events, reqInfo);
     res.json({ ok: true, ...result });

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS projects (
   name VARCHAR(200) NOT NULL,
   fb_pixel_id VARCHAR(100),
   fb_access_token TEXT,
+  allowed_domains TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -141,6 +142,8 @@ DO $$ BEGIN
 
   ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE DEFAULT 1;
   UPDATE whatsapp_messages SET project_id = 1 WHERE project_id IS NULL;
+
+  ALTER TABLE projects ADD COLUMN IF NOT EXISTS allowed_domains TEXT;
 
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbclid TEXT;

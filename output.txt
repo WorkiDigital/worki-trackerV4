@@ -1,0 +1,3 @@
+🔄 Migração v3.0...
+
+❌ Erro na migração: 

@@ -11,54 +11,58 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #080a10;
-      --bg2: #0d1017;
-      --glass: rgba(15, 20, 32, 0.7);
-      --glass2: rgba(20, 28, 45, 0.6);
-      --border: rgba(255, 255, 255, 0.06);
-      --border2: rgba(255, 255, 255, 0.1);
-      --text: #e8ecf4;
-      --text2: #8b95a8;
-      --text3: #505a6e;
-      --emerald: #00d4aa;
-      --emerald-g: rgba(0, 212, 170, 0.12);
-      --emerald-d: #00a885;
-      --cyan: #22d3ee;
+      --bg: #030509;
+      --bg2: #0a0d14;
+      --glass: rgba(15, 21, 33, 0.6);
+      --glass2: rgba(20, 28, 45, 0.4);
+      --border: rgba(255, 255, 255, 0.04);
+      --border2: rgba(255, 255, 255, 0.08);
+      --shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 8px 32px -4px rgba(0, 212, 170, 0.15);
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --text3: #64748b;
+      --emerald: #10b981;
+      --emerald-g: rgba(16, 185, 129, 0.12);
+      --emerald-d: #059669;
+      --cyan: #06b6d4;
       --blue: #3b82f6;
-      --purple: #a78bfa;
-      --pink: #f472b6;
-      --orange: #fb923c;
-      --orange-g: rgba(251, 146, 60, 0.12);
-      --red: #f87171;
-      --red-g: rgba(248, 113, 113, 0.12);
-      --yellow: #fbbf24;
-      --radius: 14px;
+      --purple: #8b5cf6;
+      --pink: #ec4899;
+      --orange: #f97316;
+      --orange-g: rgba(249, 115, 22, 0.12);
+      --red: #ef4444;
+      --red-g: rgba(239, 68, 68, 0.12);
+      --yellow: #eab308;
+      --radius: 16px;
       --radius-sm: 8px;
       --scheme: dark
     }
 
     [data-theme="light"] {
-      --bg: #f0f2f5;
+      --bg: #f8fafc;
       --bg2: #ffffff;
-      --glass: rgba(255, 255, 255, 0.85);
-      --glass2: rgba(245, 247, 250, 0.9);
-      --border: rgba(0, 0, 0, 0.08);
-      --border2: rgba(0, 0, 0, 0.12);
-      --text: #1a1d23;
-      --text2: #4a5568;
-      --text3: #8b95a8;
-      --emerald: #00b894;
-      --emerald-g: rgba(0, 184, 148, 0.1);
-      --emerald-d: #009b7d;
-      --cyan: #0891b2;
-      --blue: #2563eb;
-      --purple: #7c3aed;
-      --pink: #db2777;
-      --orange: #ea580c;
-      --orange-g: rgba(234, 88, 12, 0.1);
-      --red: #dc2626;
-      --red-g: rgba(220, 38, 38, 0.1);
-      --yellow: #d97706;
+      --glass: rgba(255, 255, 255, 0.7);
+      --glass2: rgba(241, 245, 249, 0.6);
+      --border: rgba(0, 0, 0, 0.05);
+      --border2: rgba(0, 0, 0, 0.08);
+      --shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.05);
+      --shadow-hover: 0 8px 24px -4px rgba(16, 185, 129, 0.15);
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #64748b;
+      --emerald: #10b981;
+      --emerald-g: rgba(16, 185, 129, 0.1);
+      --emerald-d: #059669;
+      --cyan: #06b6d4;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --pink: #ec4899;
+      --orange: #f97316;
+      --orange-g: rgba(249, 115, 22, 0.1);
+      --red: #ef4444;
+      --red-g: rgba(239, 68, 68, 0.1);
+      --yellow: #eab308;
       --scheme: light
     }
 
@@ -83,13 +87,13 @@
       left: -50%;
       width: 200%;
       height: 200%;
-      background: radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.03), transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.03), transparent 50%);
+      background: radial-gradient(ellipse at 20% 50%, rgba(16, 185, 129, 0.08), transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.08), transparent 50%);
       pointer-events: none;
       z-index: -1;
     }
 
     [data-theme="light"] body::before {
-      background: radial-gradient(ellipse at 20% 50%, rgba(0, 184, 148, 0.05), transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(37, 99, 235, 0.04), transparent 50%)
+      background: radial-gradient(ellipse at 20% 50%, rgba(16, 185, 129, 0.05), transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(37, 99, 235, 0.05), transparent 50%)
     }
 
     .settings-section {
@@ -559,12 +563,25 @@
       z-index: 1
     }
 
+    @keyframes fadeInScale {
+      0% {
+        opacity: 0;
+        transform: scale(0.98);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
     .tab-panel {
       display: none
     }
 
     .tab-panel.active {
-      display: block
+      display: block;
+      animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     .date-bar {
@@ -619,17 +636,20 @@
 
     .stat-card {
       background: var(--glass);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 18px;
       position: relative;
       overflow: hidden;
-      transition: transform .2s
+      box-shadow: var(--shadow);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
     }
 
     .stat-card:hover {
-      transform: translateY(-2px)
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: var(--shadow-hover);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
     .stat-card::before {
@@ -733,10 +753,16 @@
 
     .chart-panel {
       background: var(--glass);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px
+      box-shadow: var(--shadow);
+      padding: 20px;
+      transition: border-color 0.3s ease;
+    }
+
+    .chart-panel:hover {
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     .chart-title {
@@ -854,7 +880,7 @@
     }
 
     tr.lr:hover td {
-      background: rgba(255, 255, 255, 0.02)
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .lead-name {
@@ -1417,9 +1443,9 @@
                 <div class="stat-sub" id="s1s"></div>
               </div>
               <div class="stat-card">
-                <div class="stat-label">Identificados</div>
-                <div class="stat-value sv2" id="s2">—</div>
-                <div class="stat-sub" id="s2s"></div>
+                <div class="stat-label">LEADS</div>
+                <div class="stat-value sv2" id="s2">...</div>
+                <div class="stat-sub" id="s2s">Contatos capturados</div>
               </div>
               <div class="stat-card">
                 <div class="stat-label">Conversões</div>
@@ -1718,6 +1744,9 @@
           <div class="edit-group"><label>Meta Access Token (CAPI)</label><input type="password" id="projToken"
               placeholder="EAA...">
           </div>
+          <div class="edit-group"><label>Domínios Permitidos (Bloqueio Anti-Roubo)</label><input id="projDomains"
+              placeholder="Ex: site.com.br, loja.com">
+          </div>
           <div class="edit-actions"><button class="btn-cancel" onclick="closeProjectModal()">Cancelar</button><button
               class="btn-save" onclick="saveProject()">Salvar</button></div>
         </div>
@@ -1924,10 +1953,10 @@
     function updateProjectDropdown() { var sel = document.getElementById('globalProjectSelector'); var html = '<option value="all">Todos os Projetos</option>' + projectsData.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name) + '</option>' }).join(''); sel.innerHTML = html; sel.value = curProject }
     function changeGlobalProject(pid) { curProject = pid; loadAll(); updateScriptSnippet() }
     function updateScriptSnippet() { var p = projectsData.find(function (x) { return x.id == curProject }); if (!p) p = projectsData[0]; var pix = p ? p.fb_pixel_id : '[SEU_PIXEL_ID]'; var pid = p ? p.id : '1'; var box = document.getElementById('scriptBox'); if (box) box.innerHTML = '<button class="copy-btn" onclick="copyScript()">Copiar</button>&lt;!-- Meta Pixel --&gt;<br>&lt;script&gt;<br>!function(f,b,e,v,n,t,s){...}(window,document,\'script\',\'https://connect.facebook.net/en_US/fbevents.js\');<br>fbq(\'init\',\'' + pix + '\');<br>&lt;/script&gt;<br><br>&lt;!-- Worki Tracker --&gt;<br>&lt;script src="https://tracker.workidigital.tech/public/wk.js" data-project="' + pid + '" async&gt;&lt;/script&gt;'; }
-    function openProjectModal() { document.getElementById('projId').value = ''; document.getElementById('projName').value = ''; document.getElementById('projPixel').value = ''; document.getElementById('projToken').value = ''; document.getElementById('projModalTitle').textContent = 'Novo Projeto'; document.getElementById('projectModal').classList.add('open') }
+    function openProjectModal() { document.getElementById('projId').value = ''; document.getElementById('projName').value = ''; document.getElementById('projPixel').value = ''; document.getElementById('projToken').value = ''; document.getElementById('projDomains').value = ''; document.getElementById('projModalTitle').textContent = 'Novo Projeto'; document.getElementById('projectModal').classList.add('open') }
     function closeProjectModal() { document.getElementById('projectModal').classList.remove('open') }
-    function editProject(id) { var p = projectsData.find(function (x) { return x.id == id }); if (!p) return; document.getElementById('projId').value = p.id; document.getElementById('projName').value = p.name || ''; document.getElementById('projPixel').value = p.fb_pixel_id || ''; document.getElementById('projToken').value = p.fb_access_token || ''; document.getElementById('projModalTitle').textContent = 'Editar Projeto'; document.getElementById('projectModal').classList.add('open') }
-    async function saveProject() { var id = document.getElementById('projId').value; var d = { name: document.getElementById('projName').value, fb_pixel_id: document.getElementById('projPixel').value, fb_access_token: document.getElementById('projToken').value }; try { if (id) { await api('/projects/' + id, { method: 'PUT', body: d }) } else { await api('/projects', { method: 'POST', body: d }) } closeProjectModal(); await loadProjects(); loadAll() } catch (e) { alert('Erro ao salvar projeto') } }
+    function editProject(id) { var p = projectsData.find(function (x) { return x.id == id }); if (!p) return; document.getElementById('projId').value = p.id; document.getElementById('projName').value = p.name || ''; document.getElementById('projPixel').value = p.fb_pixel_id || ''; document.getElementById('projToken').value = p.fb_access_token || ''; document.getElementById('projDomains').value = p.allowed_domains || ''; document.getElementById('projModalTitle').textContent = 'Editar Projeto'; document.getElementById('projectModal').classList.add('open') }
+    async function saveProject() { var id = document.getElementById('projId').value; var d = { name: document.getElementById('projName').value, fb_pixel_id: document.getElementById('projPixel').value, fb_access_token: document.getElementById('projToken').value, allowed_domains: document.getElementById('projDomains').value }; try { if (id) { await api('/projects/' + id, { method: 'PUT', body: d }) } else { await api('/projects', { method: 'POST', body: d }) } closeProjectModal(); await loadProjects(); loadAll() } catch (e) { alert('Erro ao salvar projeto') } }
     async function deleteProject(id, name) { if (!confirm('Excluir projeto "' + name + '"? Isso não apagará os leads, mas o script falhará se não for atualizado.')) return; try { await api('/projects/' + id, { method: 'DELETE' }); if (curProject == id) curProject = 'all'; await loadProjects(); loadAll() } catch (e) { alert('Erro ao excluir projeto') } }
 
     function loadAll() { loadProjects().then(function () { loadStats(); loadCharts(); if (document.getElementById('panel-leads').classList.contains('active')) loadLeads() }) }

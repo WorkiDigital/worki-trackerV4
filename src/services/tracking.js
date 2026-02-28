@@ -7,18 +7,18 @@ const TrackingService = {
   // PROJETOS
   // ═══════════════════════════════════════
   async getProjects() {
-    return db.many('SELECT id, name, fb_pixel_id, fb_access_token, created_at FROM projects ORDER BY created_at ASC');
+    return db.many('SELECT id, name, fb_pixel_id, fb_access_token, allowed_domains, created_at FROM projects ORDER BY created_at ASC');
   },
   async createProject(data) {
     return db.one(
-      'INSERT INTO projects (name, fb_pixel_id, fb_access_token) VALUES ($1, $2, $3) RETURNING *',
-      [data.name, data.fb_pixel_id, data.fb_access_token]
+      'INSERT INTO projects (name, fb_pixel_id, fb_access_token, allowed_domains) VALUES ($1, $2, $3, $4) RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains]
     );
   },
   async updateProject(id, data) {
     return db.one(
-      'UPDATE projects SET name=$1, fb_pixel_id=$2, fb_access_token=$3, updated_at=NOW() WHERE id=$4 RETURNING *',
-      [data.name, data.fb_pixel_id, data.fb_access_token, id]
+      'UPDATE projects SET name=$1, fb_pixel_id=$2, fb_access_token=$3, allowed_domains=$4, updated_at=NOW() WHERE id=$5 RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains, id]
     );
   },
   async deleteProject(id) {
@@ -32,14 +32,46 @@ const TrackingService = {
   // PROCESSAR BATCH DE EVENTOS
   // ═══════════════════════════════════════
   async processEvents(events, reqInfo = {}) {
-    const results = { processed: 0, errors: 0 };
+    const results = { processed: 0, errors: 0, blocked_cors: 0 };
+
+    // Cache de dominios permitidos por project_id para não sobrecarregar o DB
+    const projectDomains = {};
+
     for (const event of events) {
       try {
+        const projectId = event.project_id || 1;
+
+        // Bloqueio de CORS/Rejeição de Tracking Não Autorizado
+        if (projectDomains[projectId] === undefined) {
+          const p = await db.one('SELECT allowed_domains FROM projects WHERE id = $1', [projectId]);
+          projectDomains[projectId] = p?.allowed_domains || '';
+        }
+
+        const allowedRaw = projectDomains[projectId];
+        if (allowedRaw && reqInfo.origin) {
+          const originsAllowed = allowedRaw.split(',').map(d => d.trim().toLowerCase());
+          const reqHost = new URL(reqInfo.origin).hostname.toLowerCase();
+
+          let isAllowed = false;
+          for (let d of originsAllowed) {
+            d = d.replace(/^https?:\/\//, '');
+            if (reqHost === d || reqHost.endsWith('.' + d)) {
+              isAllowed = true;
+              break;
+            }
+          }
+          if (!isAllowed) {
+            console.warn(`[CORS BLOCK] Evento rejeitado. Origem: ${reqHost} | Projeto: ${projectId}`);
+            results.blocked_cors++;
+            continue; // Pula a gravação deste evento
+          }
+        }
+
         await this.upsertVisitor(event, reqInfo);
         await db.query(
           `INSERT INTO events (project_id, visitor_id, session_id, event_type, page, url, data)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [event.project_id || 1, event.visitor_id, event.session_id, event.event, event.page, event.url, JSON.stringify(event.data || {})]
+          [projectId, event.visitor_id, event.session_id, event.event, event.page, event.url, JSON.stringify(event.data || {})]
         );
         switch (event.event) {
           case 'pageview': await this.processPageview(event); break;
@@ -309,10 +341,10 @@ const TrackingService = {
         COUNT(*) FILTER (WHERE last_seen > NOW() - INTERVAL '7 days') as active_7d,
         COUNT(*) FILTER (WHERE converted = TRUE) as conversions,
         COALESCE(SUM(conversion_value) FILTER (WHERE converted = TRUE), 0) as total_revenue,
-        ROUND(AVG(days_to_convert) FILTER (WHERE converted = TRUE), 1) as avg_days_to_convert,
+        COALESCE(ROUND(AVG(days_to_convert) FILTER (WHERE converted = TRUE), 1), 0) as avg_days_to_convert,
         ROUND(COUNT(*) FILTER (WHERE converted = TRUE)::numeric / NULLIF(COUNT(*), 0) * 100, 1) as conversion_rate,
         COUNT(*) FILTER (WHERE whatsapp_contacted = TRUE) as whatsapp_contacts,
-        COUNT(*) FILTER (WHERE status = 'identified') as identified_leads,
+        COUNT(*) FILTER (WHERE status IN ('identified', 'converted') OR whatsapp_contacted = TRUE) as identified_leads,
         COUNT(*) FILTER (WHERE instagram IS NOT NULL AND instagram != '') as instagram_leads,
         COUNT(*) FILTER (WHERE fbclid IS NOT NULL OR fbc IS NOT NULL) as meta_leads
       FROM visitors WHERE 1=1 ${where}
@@ -381,6 +413,7 @@ const TrackingService = {
     // Origens
     const sources = await db.many(`
       SELECT COALESCE(first_utm_source, 'direto') as source, COUNT(*) as visitors,
+        COUNT(*) FILTER (WHERE status IN ('identified', 'converted') OR whatsapp_contacted = TRUE) as leads,
         COUNT(*) FILTER (WHERE converted=TRUE) as conversions,
         COALESCE(SUM(conversion_value) FILTER (WHERE converted=TRUE), 0) as revenue
       FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
@@ -406,6 +439,7 @@ const TrackingService = {
     // Campanhas
     const campaigns = await db.many(`
       SELECT COALESCE(first_utm_campaign, first_utm_source, 'Desconhecida') as campaign, COUNT(*) as visitors,
+        COUNT(*) FILTER (WHERE status IN ('identified', 'converted') OR whatsapp_contacted = TRUE) as leads,
         COUNT(*) FILTER (WHERE converted=TRUE) as conversions,
         COALESCE(SUM(conversion_value) FILTER (WHERE converted=TRUE), 0) as revenue
       FROM visitors WHERE first_seen::date >= $1::date AND first_seen::date <= $2::date ${pidOpt}
