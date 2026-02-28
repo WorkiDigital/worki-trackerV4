@@ -161,11 +161,11 @@ const TrackingService = {
   },
 
   async processClick(event) {
-    if (event.data?.type === 'whatsapp_click' && event.data?.phone) {
+    if (event.data?.type === 'whatsapp_click') {
       await db.query(
-        `UPDATE visitors SET whatsapp_contacted = TRUE, whatsapp_date = COALESCE(whatsapp_date, NOW()),
-         phone = COALESCE(phone, $1) WHERE visitor_id = $2`,
-        [event.data.phone, event.visitor_id]
+        `UPDATE visitors SET whatsapp_contacted = TRUE, whatsapp_date = COALESCE(whatsapp_date, NOW())
+         WHERE visitor_id = $1`,
+        [event.visitor_id]
       );
     }
     if (event.data?.type === 'phone_click' && event.data?.phone) {
@@ -297,9 +297,45 @@ const TrackingService = {
     await db.query(`INSERT INTO whatsapp_messages (phone,push_name,message,from_me,raw_data) VALUES ($1,$2,$3,$4,$5)`,
       [phone, pushName, message, fromMe, JSON.stringify(payload)]);
 
-    let visitor = await db.one('SELECT visitor_id FROM visitors WHERE phone=$1 ORDER BY last_seen DESC LIMIT 1', [phone]);
+    let visitor = null;
+
+    // 1. Tentar match pelo ID "mágico" injetado na mensagem (Opção A)
+    const idMatch = message.match(/\[ID:(wk_vid_[^\]]+)\]/);
+    if (idMatch) {
+      const extractedId = idMatch[1];
+      console.log(`[WEBHOOK] Magic ID encontrado na mensagem: ${extractedId}`);
+      visitor = await db.oneOrNone('SELECT visitor_id FROM visitors WHERE visitor_id=$1', [extractedId]);
+    }
+
+    // 2. Tentar match por telefone já salvo (lidando com DDI e 9º dígito do BR)
     if (!visitor) {
-      const click = await db.one(`SELECT visitor_id FROM events WHERE event_type='click' AND data->>'phone'=$1 ORDER BY created_at DESC LIMIT 1`, [phone]);
+      let phoneSearch = phone.startsWith('55') ? phone.substring(2) : phone; // Ex: 85992494552
+      let phoneSem9 = phoneSearch;
+      if (phoneSearch.length === 11 && phoneSearch.charAt(2) === '9') {
+        phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3); // Ex: 8592494552
+      }
+
+      visitor = await db.oneOrNone(`
+        SELECT visitor_id FROM visitors 
+        WHERE phone=$1 OR phone=$2 OR phone=$3 OR phone=$4 
+        ORDER BY last_seen DESC LIMIT 1
+      `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+    }
+
+    // 3. Fallback: procurar em cliques de whatsapp anteriores
+    if (!visitor) {
+      let phoneSearch = phone.startsWith('55') ? phone.substring(2) : phone;
+      let phoneSem9 = phoneSearch;
+      if (phoneSearch.length === 11 && phoneSearch.charAt(2) === '9') {
+        phoneSem9 = phoneSearch.substring(0, 2) + phoneSearch.substring(3);
+      }
+      const click = await db.oneOrNone(`
+        SELECT visitor_id FROM events 
+        WHERE event_type='click' 
+        AND (data->>'phone'=$1 OR data->>'phone'=$2 OR data->>'phone'=$3 OR data->>'phone'=$4)
+        ORDER BY created_at DESC LIMIT 1
+      `, [phone, phoneSearch, phoneSem9, '55' + phoneSem9]);
+
       if (click) visitor = click;
     }
 
