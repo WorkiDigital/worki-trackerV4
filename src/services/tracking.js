@@ -679,15 +679,26 @@ const TrackingService = {
     const transaction = purchase.transaction || null;
     const paymentType = purchase.payment?.type || null;
 
-    if (!email) return { processed: false, reason: 'Email do comprador ausente.' };
-
     console.log(`[HOTMART] ${metaEvent} | Email: ${email} | Produto: ${productName} | Valor: R$${value} | TX: ${transaction}`);
 
-    // Buscar visitor pelo email
-    const visitor = await db.one(
-      'SELECT * FROM visitors WHERE email = $1 ORDER BY last_seen DESC LIMIT 1',
-      [email]
-    );
+    // 1. Match por source_sck (visitor_id injetado pelo wk.js no link da Hotmart)
+    const sourceSck = purchase.tracking?.source_sck || purchase.tracking?.source || null;
+    let visitor = null;
+    if (sourceSck && sourceSck.startsWith('wk_')) {
+      console.log(`[HOTMART] Tentando match por source_sck: ${sourceSck}`);
+      visitor = await db.one('SELECT * FROM visitors WHERE visitor_id = $1', [sourceSck]);
+      if (visitor) console.log(`[HOTMART] ✅ Match por visitor_id (source_sck)`);
+    }
+
+    // 2. Fallback: match por email
+    if (!visitor && email) {
+      console.log(`[HOTMART] Tentando match por email: ${email}`);
+      visitor = await db.one(
+        'SELECT * FROM visitors WHERE email = $1 ORDER BY last_seen DESC LIMIT 1',
+        [email]
+      );
+      if (visitor) console.log(`[HOTMART] ✅ Match por email`);
+    }
 
     if (!visitor) {
       console.warn(`[HOTMART] Visitante não encontrado para email: ${email}`);
