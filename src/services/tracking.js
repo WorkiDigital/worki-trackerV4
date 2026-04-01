@@ -111,17 +111,22 @@ const TrackingService = {
 
   async upsertVisitor(event, reqInfo = {}) {
     const existing = await db.one(
-      'SELECT id FROM visitors WHERE visitor_id = $1', [event.visitor_id]
+      'SELECT id, city FROM visitors WHERE visitor_id = $1', [event.visitor_id]
     );
+    
+    // Server-side Geo Resolution se o visitante for novo ou não tiver cidade
+    if (reqInfo.ip && (!existing || !existing.city)) {
+      this.resolveGeo(event.visitor_id, reqInfo.ip).catch(() => {});
+    }
+
     if (!existing) {
       const utm = event.data?.utm || {};
       const device = event.data?.device || {};
-      const geo = event.data?.geo || {};
       await db.query(
         `INSERT INTO visitors (project_id, visitor_id, fingerprint, first_utm_source, first_utm_medium,
          first_utm_campaign, first_utm_term, first_utm_content, first_referrer, device_type, device_os, device_browser, device_screen,
-         fbclid, fbc, fbp, client_ip, client_user_agent, city, state, country, zip_code, instagram)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+         fbclid, fbc, fbp, client_ip, client_user_agent, instagram)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
          ON CONFLICT (visitor_id) DO NOTHING`,
         [
           event.project_id || 1, event.visitor_id, event.fingerprint,
@@ -129,23 +134,16 @@ const TrackingService = {
           device.type, device.os, device.browser, device.screen,
           utm.fbclid || null, event.data?.fbc || null, event.data?.fbp || null,
           reqInfo.ip || null, reqInfo.userAgent || null,
-          geo.city || null, geo.state || null, geo.country || null, geo.zip_code || null,
           event.data?.instagram || null
         ]
       );
     } else {
-      const geo = event.data?.geo || {};
       await db.query(
         `UPDATE visitors SET last_seen = NOW(), updated_at = NOW(),
          client_ip = COALESCE($2, client_ip),
-         client_user_agent = COALESCE($3, client_user_agent),
-         city = COALESCE(city, $4),
-         state = COALESCE(state, $5),
-         country = COALESCE(country, $6),
-         zip_code = COALESCE(zip_code, $7)
+         client_user_agent = COALESCE($3, client_user_agent)
          WHERE visitor_id = $1`,
-        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null,
-        geo.city || null, geo.state || null, geo.country || null, geo.zip_code || null]
+        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null]
       );
     }
   },
@@ -221,7 +219,12 @@ const TrackingService = {
     if (visitor && visitor.project_id) {
       const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [visitor.project_id]);
       if (project?.fb_pixel_id && project?.fb_access_token) {
-        metaService.sendEvent('Lead', visitor, { url: event.url }, project.fb_pixel_id, project.fb_access_token);
+        // ✅ Passa event_id do cliente para deduplicação com fbq() + referrer_url
+        metaService.sendEvent('Lead', visitor, {
+          url: event.url,
+          event_id: event.data?.event_id || null,
+          referrer: event.data?.referrer || null
+        }, project.fb_pixel_id, project.fb_access_token);
       }
     }
   },
@@ -258,7 +261,14 @@ const TrackingService = {
     if (full && full.project_id) {
       const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
       if (project?.fb_pixel_id && project?.fb_access_token) {
-        metaService.sendEvent('CompleteRegistration', full, { value: d.value, product: d.product, url: event.url }, project.fb_pixel_id, project.fb_access_token);
+        // ✅ Passa event_id do cliente para deduplicação com fbq() + referrer_url
+        metaService.sendEvent('CompleteRegistration', full, {
+          value: d.value,
+          product: d.product,
+          url: event.url,
+          event_id: d.event_id || null,
+          referrer: event.data?.referrer || null
+        }, project.fb_pixel_id, project.fb_access_token);
       }
     }
   },
@@ -299,7 +309,12 @@ const TrackingService = {
     if (full && full.project_id) {
       const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
       if (project?.fb_pixel_id && project?.fb_access_token) {
-        metaService.sendEvent('CompleteRegistration', full, { value, product }, project.fb_pixel_id, project.fb_access_token);
+        // ✅ Match manual — sem event_id de cliente, usa fallback server-side
+        metaService.sendEvent('CompleteRegistration', full, {
+          value,
+          product,
+          referrer: data?.referrer || null
+        }, project.fb_pixel_id, project.fb_access_token);
       }
     }
 
@@ -326,7 +341,7 @@ const TrackingService = {
     let visitor = null;
 
     // 1. Tentar match pelo ID "mágico" injetado na mensagem (Opção A)
-    const idMatch = message.match(/\[ID:(wk_vid_[^\]]+)\]/);
+    const idMatch = message.match(/\[ID:(wk_[^\]]+)\]/);
     if (idMatch) {
       const extractedId = idMatch[1];
       console.log(`[WEBHOOK] Magic ID encontrado na mensagem: ${extractedId}`);

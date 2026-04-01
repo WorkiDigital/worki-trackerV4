@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 class MetaService {
   constructor() {
-    this.apiVersion = 'v19.0';
+    this.apiVersion = 'v21.0';
   }
 
   hashSHA256(value) {
@@ -43,15 +43,18 @@ class MetaService {
       if (visitor.fbp) userData.fbp = visitor.fbp;
       if (visitor.visitor_id) userData.external_id = [this.hashSHA256(visitor.visitor_id)];
 
+      const eventId = data.event_id || `${visitor.visitor_id}_${eventName}_${now}`;
+
       const eventData = {
         event_name: eventName,
         event_time: now,
-        event_id: `${visitor.visitor_id}_${eventName}_${now}`,
+        event_id: eventId,
         action_source: 'website',
         user_data: userData,
       };
 
       if (data.url) eventData.event_source_url = data.url;
+      if (data.referrer) eventData.referrer_url = data.referrer;
       if (data.value) {
         eventData.custom_data = {
           value: parseFloat(data.value),
@@ -75,8 +78,8 @@ class MetaService {
         return { ok: false, error: result.error.message };
       }
 
-      console.log(`✅ Meta CAPI: ${eventName} enviado (${result.events_received} evento(s))`);
-      return { ok: true, events_received: result.events_received };
+      console.log(`✅ Meta CAPI: ${eventName} [${eventId}] enviado (${result.events_received} evento(s))`);
+      return { ok: true, events_received: result.events_received, event_id: eventId };
     } catch (err) {
       console.error('❌ Meta CAPI falha:', err.message);
       return { ok: false, error: err.message };
