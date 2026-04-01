@@ -10,6 +10,7 @@ const db = require('./db');
 
 const trackRoutes = require('./routes/track');
 const webhookRoutes = require('./routes/webhook');
+const hotmartRoutes = require('./routes/hotmart');
 const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
@@ -35,9 +36,10 @@ const dashLimiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
 
 app.use('/api/track', trackLimiter, trackRoutes);
 app.use('/api/webhook', webhookRoutes);
+app.use('/api/webhook', hotmartRoutes);
 app.use('/api/dashboard', dashLimiter, dashboardRoutes);
-app.use('/dashboard', express.static(path.join(__dirname, 'views')));
-app.use('/public', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
+app.use('/dashboard', express.static(path.resolve(__dirname, 'views')));
+app.use('/public', express.static(path.resolve(__dirname, '..', 'public')));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '4.1.0', uptime: process.uptime() }));
 app.get('/', (req, res) => res.json({ name: 'Worki Tracker API', version: '4.1.0' }));

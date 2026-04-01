@@ -255,13 +255,14 @@ const TrackingService = {
        WHERE visitor_id=$4`,
       [d.value || 0, d.source, days, event.visitor_id]
     );
-    // Meta CAPI — CompleteRegistration
+    // Meta CAPI — usa event_name do cliente se fornecido (Purchase, InitiateCheckout, AddToCart, etc.)
     const full = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
     if (full && full.project_id) {
       const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
       if (project?.fb_pixel_id && project?.fb_access_token) {
-        // ✅ Passa event_id do cliente para deduplicação com fbq() + referrer_url
-        metaService.sendEvent('CompleteRegistration', full, {
+        const ALLOWED_EVENTS = ['Purchase', 'InitiateCheckout', 'AddToCart', 'CompleteRegistration', 'Lead', 'ViewContent'];
+        const metaEventName = ALLOWED_EVENTS.includes(d.event_name) ? d.event_name : 'CompleteRegistration';
+        metaService.sendEvent(metaEventName, full, {
           value: d.value,
           product: d.product,
           url: event.url,
@@ -648,6 +649,94 @@ const TrackingService = {
     await db.query('DELETE FROM visitors WHERE visitor_id=$1', [visitorId]);
 
     return { visitor_id: visitorId, name: existing.name };
+  },
+
+  // ═══════════════════════════════════════
+  // WEBHOOK HOTMART → META CAPI
+  // ═══════════════════════════════════════
+  async processHotmartWebhook(payload) {
+    const hotmartEvent = payload.event || '';
+    const data = payload.data || {};
+    const buyer = data.buyer || {};
+    const product = data.product || {};
+    const purchase = data.purchase || {};
+
+    // Mapear evento Hotmart → Meta CAPI
+    const EVENT_MAP = {
+      'PURCHASE_COMPLETE': 'Purchase',
+      'PURCHASE_APPROVED': 'Purchase',
+      'PURCHASE_BILLET_PRINTED': 'InitiateCheckout',
+    };
+    const metaEvent = EVENT_MAP[hotmartEvent];
+    if (!metaEvent) {
+      return { processed: false, reason: `Evento '${hotmartEvent}' ignorado.` };
+    }
+
+    const email = buyer.email ? buyer.email.toLowerCase().trim() : null;
+    const name = buyer.name || null;
+    const productName = product.name || null;
+    const value = purchase.price?.value || purchase.full_price?.value || 0;
+    const transaction = purchase.transaction || null;
+    const paymentType = purchase.payment?.type || null;
+
+    if (!email) return { processed: false, reason: 'Email do comprador ausente.' };
+
+    console.log(`[HOTMART] ${metaEvent} | Email: ${email} | Produto: ${productName} | Valor: R$${value} | TX: ${transaction}`);
+
+    // Buscar visitor pelo email
+    const visitor = await db.one(
+      'SELECT * FROM visitors WHERE email = $1 ORDER BY last_seen DESC LIMIT 1',
+      [email]
+    );
+
+    if (!visitor) {
+      console.warn(`[HOTMART] Visitante não encontrado para email: ${email}`);
+      return { processed: true, matched: false, meta_event: metaEvent, email };
+    }
+
+    const projectId = visitor.project_id || 1;
+    const project = await db.one(
+      'SELECT fb_pixel_id, fb_access_token FROM projects WHERE id = $1',
+      [projectId]
+    );
+
+    if (metaEvent === 'Purchase') {
+      const days = Math.ceil((Date.now() - new Date(visitor.first_seen).getTime()) / 86400000);
+      await db.query(
+        `INSERT INTO conversions (project_id, visitor_id, source, value, product, payment, data)
+         VALUES ($1, $2, 'hotmart', $3, $4, $5, $6)`,
+        [projectId, visitor.visitor_id, value, productName, paymentType, JSON.stringify(payload)]
+      );
+      await db.query(
+        `UPDATE visitors SET converted=TRUE, conversion_value=$1, conversion_source='hotmart',
+         conversion_date=NOW(), days_to_convert=$2, status='converted',
+         name=COALESCE(name,$3), updated_at=NOW() WHERE visitor_id=$4`,
+        [value, days, name, visitor.visitor_id]
+      );
+      await db.query(
+        `INSERT INTO events (project_id, visitor_id, event_type, data)
+         VALUES ($1, $2, 'purchase', $3)`,
+        [projectId, visitor.visitor_id, JSON.stringify({ source: 'hotmart', value, product: productName, transaction })]
+      );
+    } else if (metaEvent === 'InitiateCheckout') {
+      await db.query(
+        `INSERT INTO events (project_id, visitor_id, event_type, data)
+         VALUES ($1, $2, 'initiate_checkout', $3)`,
+        [projectId, visitor.visitor_id, JSON.stringify({ source: 'hotmart', value, product: productName, transaction })]
+      );
+    }
+
+    // Enviar para Meta CAPI
+    if (project?.fb_pixel_id && project?.fb_access_token) {
+      const metaService = require('./meta');
+      metaService.sendEvent(metaEvent, visitor, {
+        value,
+        product: productName,
+        event_id: transaction,
+      }, project.fb_pixel_id, project.fb_access_token);
+    }
+
+    return { processed: true, matched: true, meta_event: metaEvent, visitor_id: visitor.visitor_id };
   },
 
   // ═══════════════════════════════════════
