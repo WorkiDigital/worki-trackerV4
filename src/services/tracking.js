@@ -113,11 +113,6 @@ const TrackingService = {
     const existing = await db.one(
       'SELECT id, city FROM visitors WHERE visitor_id = $1', [event.visitor_id]
     );
-    
-    // Server-side Geo Resolution se o visitante for novo ou não tiver cidade
-    if (reqInfo.ip && (!existing || !existing.city)) {
-      this.resolveGeo(event.visitor_id, reqInfo.ip).catch(() => {});
-    }
 
     if (!existing) {
       const utm = event.data?.utm || {};
@@ -137,7 +132,11 @@ const TrackingService = {
           event.data?.instagram || null
         ]
       );
+      // Server-side Geo Resolution após INSERT (evita race condition)
+      if (reqInfo.ip) this.resolveGeo(event.visitor_id, reqInfo.ip).catch(() => {});
     } else {
+      // Geo só se visitante existente ainda não tem cidade
+      if (reqInfo.ip && !existing.city) this.resolveGeo(event.visitor_id, reqInfo.ip).catch(() => {});
       await db.query(
         `UPDATE visitors SET last_seen = NOW(), updated_at = NOW(),
          client_ip = COALESCE($2, client_ip),
@@ -329,6 +328,7 @@ const TrackingService = {
     const key = data.key || {};
     const remoteJid = key.remoteJid || '';
     const fromMe = key.fromMe || false;
+    if (fromMe) return { processed: false, reason: 'Mensagem outbound ignorada.' };
     const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
     if (!phone || phone.length < 8) return { processed: false, reason: 'Número inválido' };
 
@@ -400,7 +400,9 @@ const TrackingService = {
       await db.query('UPDATE whatsapp_messages SET visitor_id=$1, matched=TRUE WHERE phone=$2 AND visitor_id IS NULL', [visitor.visitor_id, phone]);
       await db.query(`UPDATE visitors SET whatsapp_contacted=TRUE, whatsapp_date=COALESCE(whatsapp_date,NOW()), name=COALESCE(name,$1), phone=COALESCE(phone,$2), updated_at=NOW() WHERE visitor_id=$3`,
         [pushName, phone, visitor.visitor_id]);
-      await db.query(`INSERT INTO events (visitor_id,event_type,data) VALUES ($1,'whatsapp_contact',$2)`,
+      await db.query(
+        `INSERT INTO events (project_id, visitor_id, event_type, data)
+         SELECT project_id, $1, 'whatsapp_contact', $2 FROM visitors WHERE visitor_id = $1`,
         [visitor.visitor_id, JSON.stringify({ phone, pushName, message: message.substring(0, 200), fromMe })]);
       return { processed: true, matched: true, visitor_id: visitor.visitor_id };
     }
@@ -451,7 +453,8 @@ const TrackingService = {
   async getChartData({ dateFrom, dateTo, projectId } = {}) {
     const from = dateFrom || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = dateTo || new Date().toISOString().split('T')[0];
-    const pidOpt = (projectId && projectId !== 'all') ? ` AND project_id = ${parseInt(projectId)}` : '';
+    const pid = parseInt(projectId);
+    const pidOpt = (projectId && projectId !== 'all' && !isNaN(pid)) ? ` AND project_id = ${pid}` : '';
 
     // Série temporal com generate_series + LEFT JOIN (sem subqueries correlacionadas)
     const daily = await db.many(`
