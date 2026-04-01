@@ -1784,13 +1784,22 @@
     }
     function copyHotmart() {
       var t = document.getElementById('hottokInput').value;
-      if (!t) { alert('Digite seu token antes de copiar.'); return; }
+      if (!t) { alert('Token não configurado no servidor.'); return; }
       var url = 'https://tracker.workidigital.tech/api/webhook/hotmart?hottok=' + t;
       navigator.clipboard.writeText(url).then(function () {
         var b = document.querySelector('#hotmartBox .copy-btn');
         b.textContent = '✅ Copiado!';
         setTimeout(function () { b.textContent = 'Copiar'; }, 2000);
       });
+    }
+    async function loadHotmartConfig() {
+      try {
+        var cfg = await api('/config');
+        if (cfg.hotmart_token) {
+          document.getElementById('hottokInput').value = cfg.hotmart_token;
+          document.getElementById('hottokDisplay').textContent = cfg.hotmart_token;
+        }
+      } catch (e) {}
     }
     function copyScript() {
       var p = projectsData.find(function (x) { return x.id == curProject });
@@ -1994,7 +2003,7 @@
 
     function loadAll() { loadProjects().then(function () { loadStats(); loadCharts(); if (document.getElementById('panel-leads').classList.contains('active')) loadLeads() }) }
     (function () { var t = new Date(); dateTo = t.toISOString().split('T')[0]; dateFrom = new Date(t - 7 * 864e5).toISOString().split('T')[0]; document.getElementById('df').value = dateFrom; document.getElementById('dt').value = dateTo })();
-    loadAll(); setInterval(loadStats, 30000); loadRealtime();
+    loadAll(); setInterval(loadStats, 30000); loadRealtime(); loadHotmartConfig();
     if (localStorage.getItem('wk_sidebar') === '1') document.getElementById('sidebar').classList.add('collapsed');
     switchTab('projects');
   </script>

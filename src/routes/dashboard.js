@@ -40,6 +40,15 @@ router.delete('/projects/:projectId', async (req, res) => {
   } catch (err) { console.error('Erro excluir projeto:', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+router.get('/config', (req, res) => {
+  res.json({
+    hotmart_token: process.env.HOTMART_TOKEN || null,
+    webhook_url: process.env.HOTMART_TOKEN
+      ? `https://tracker.workidigital.tech/api/webhook/hotmart?hottok=${process.env.HOTMART_TOKEN}`
+      : null
+  });
+});
+
 router.get('/stats', async (req, res) => {
   try {
     const { date_from, date_to, project_id } = req.query;
