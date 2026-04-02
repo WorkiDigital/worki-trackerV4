@@ -161,7 +161,7 @@ const TrackingService = {
          client_ip = COALESCE($2, client_ip),
          client_user_agent = COALESCE($3, client_user_agent),
          fbp = COALESCE(fbp, $4),
-         fbc = COALESCE(fbc, $5)
+         fbc = COALESCE($5, fbc)
          WHERE visitor_id = $1`,
         [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null,
          event.data?.fbp || null, event.data?.fbc || null]
@@ -190,6 +190,19 @@ const TrackingService = {
        WHERE visitor_id = $2`,
       [parseInt(sessionCount?.count || 1), event.visitor_id]
     );
+
+    // Meta CAPI — PageView event
+    const full = await db.oneOrNone('SELECT * FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
+    if (full && full.project_id) {
+      const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [full.project_id]);
+      if (project?.fb_pixel_id && project?.fb_access_token) {
+        metaService.sendEvent('PageView', full, {
+          url: event.url,
+          event_id: event.data?.event_id || null,
+          referrer: event.data?.referrer || null
+        }, project.fb_pixel_id, project.fb_access_token);
+      }
+    }
   },
 
   async processScroll(event) {

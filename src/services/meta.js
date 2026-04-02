@@ -12,10 +12,17 @@ class MetaService {
 
   normalizePhone(phone) {
     if (!phone) return null;
-    const clean = phone.replace(/\D/g, '');
-    // Garante formato internacional +55
+    let clean = phone.replace(/\D/g, '');
+    
+    // Remove zero à esquerda (comum em DDDs brasileiros erroneamente digitados)
+    if (clean.length > 10 && clean.startsWith('0')) {
+      clean = clean.substring(1);
+    }
+    
+    // Se o número tem 10 ou 11 dígitos (sem DDI), assume Brasil e adiciona 55
     if (clean.length === 11 || clean.length === 10) return '55' + clean;
-    if (clean.startsWith('55')) return clean;
+    
+    // Se já tem 55 ou mais de 12 dígitos (já com DDI), retorna limpo
     return clean;
   }
 
