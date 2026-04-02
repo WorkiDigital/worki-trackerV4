@@ -115,6 +115,25 @@ const TrackingService = {
     );
 
     if (!existing) {
+      // Re-identificação por fingerprint: se o cookie foi apagado mas o browser é o mesmo
+      let inheritedFbp = event.data?.fbp || null;
+      let inheritedFbc = event.data?.fbc || null;
+      if (event.fingerprint) {
+        const byFp = await db.one(
+          `SELECT visitor_id, fbp, fbc FROM visitors
+           WHERE fingerprint = $1 AND project_id = $2
+           AND last_seen > NOW() - INTERVAL '30 days'
+           ORDER BY last_seen DESC LIMIT 1`,
+          [event.fingerprint, event.project_id || 1]
+        );
+        if (byFp && byFp.visitor_id !== event.visitor_id) {
+          // Recupera fbp/fbc do visitor anterior (mesmo browser, cookie apagado)
+          inheritedFbp = inheritedFbp || byFp.fbp;
+          inheritedFbc = inheritedFbc || byFp.fbc;
+          console.log(`[FINGERPRINT] Re-identificado: ${byFp.visitor_id} → ${event.visitor_id} (fbp/fbc recuperados)`);
+        }
+      }
+
       const utm = event.data?.utm || {};
       const device = event.data?.device || {};
       await db.query(
@@ -127,7 +146,7 @@ const TrackingService = {
           event.project_id || 1, event.visitor_id, event.fingerprint,
           utm.source, utm.medium, utm.campaign, utm.term, utm.content, event.data?.referrer,
           device.type, device.os, device.browser, device.screen,
-          utm.fbclid || null, event.data?.fbc || null, event.data?.fbp || null,
+          utm.fbclid || null, inheritedFbc, inheritedFbp,
           reqInfo.ip || null, reqInfo.userAgent || null,
           event.data?.instagram || null
         ]
@@ -140,9 +159,12 @@ const TrackingService = {
       await db.query(
         `UPDATE visitors SET last_seen = NOW(), updated_at = NOW(),
          client_ip = COALESCE($2, client_ip),
-         client_user_agent = COALESCE($3, client_user_agent)
+         client_user_agent = COALESCE($3, client_user_agent),
+         fbp = COALESCE(fbp, $4),
+         fbc = COALESCE(fbc, $5)
          WHERE visitor_id = $1`,
-        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null]
+        [event.visitor_id, reqInfo.ip || null, reqInfo.userAgent || null,
+         event.data?.fbp || null, event.data?.fbc || null]
       );
     }
   },
@@ -213,7 +235,14 @@ const TrackingService = {
       [name, email, phone, empresa, instagram, event.visitor_id]
     );
 
-    // Meta CAPI — Lead event
+    // Enriquecer fbp/fbc no visitor antes de enviar ao Meta
+    if (event.data?.fbp || event.data?.fbc) {
+      await db.query(
+        `UPDATE visitors SET fbp=COALESCE(fbp,$1), fbc=COALESCE(fbc,$2) WHERE visitor_id=$3`,
+        [event.data.fbp || null, event.data.fbc || null, event.visitor_id]
+      );
+    }
+    // Meta CAPI — Lead event (busca visitor já enriquecido)
     const visitor = await db.one('SELECT * FROM visitors WHERE visitor_id=$1', [event.visitor_id]);
     if (visitor && visitor.project_id) {
       const project = await db.oneOrNone('SELECT fb_pixel_id, fb_access_token FROM projects WHERE id=$1', [visitor.project_id]);
