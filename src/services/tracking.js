@@ -773,6 +773,8 @@ const TrackingService = {
         value,
         product: productName,
         event_id: transaction,
+        order_id: transaction,
+        url: `https://pay.hotmart.com/`,
       }, project.fb_pixel_id, project.fb_access_token);
     }
 

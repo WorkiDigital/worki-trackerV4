@@ -54,12 +54,24 @@ class MetaService {
       };
 
       if (data.url) eventData.event_source_url = data.url;
-      if (data.referrer) eventData.referrer_url = data.referrer;
-      if (data.value) {
+      // referrer_url sempre enviado quando disponível
+      const referrer = data.referrer || visitor.first_referrer || null;
+      if (referrer) eventData.referrer_url = referrer;
+
+      // custom_data — sempre presente em eventos de conversão
+      const isPurchaseEvent = ['Purchase', 'InitiateCheckout', 'AddToCart', 'CompleteRegistration'].includes(eventName);
+      if (isPurchaseEvent || data.value) {
+        const contentId = data.product
+          ? data.product.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+          : (data.order_id || visitor.visitor_id);
         eventData.custom_data = {
-          value: parseFloat(data.value),
+          value: parseFloat(data.value || 0),
           currency: 'BRL',
           ...(data.product && { content_name: data.product }),
+          content_ids: [contentId],
+          content_type: 'product',
+          num_items: 1,
+          ...(data.order_id && { order_id: data.order_id }),
         };
       }
 
