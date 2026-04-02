@@ -144,6 +144,9 @@ DO $$ BEGIN
   UPDATE whatsapp_messages SET project_id = 1 WHERE project_id IS NULL;
 
   ALTER TABLE projects ADD COLUMN IF NOT EXISTS allowed_domains TEXT;
+  ALTER TABLE projects ADD COLUMN IF NOT EXISTS custom_domain TEXT;
+  ALTER TABLE projects ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(20) DEFAULT 'script';
+  CREATE INDEX IF NOT EXISTS idx_projects_custom_domain ON projects(custom_domain);
 
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS instagram VARCHAR(100);
   ALTER TABLE visitors ADD COLUMN IF NOT EXISTS fbclid TEXT;

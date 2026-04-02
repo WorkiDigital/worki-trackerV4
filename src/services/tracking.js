@@ -7,18 +7,18 @@ const TrackingService = {
   // PROJETOS
   // ═══════════════════════════════════════
   async getProjects() {
-    return db.many('SELECT id, name, fb_pixel_id, fb_access_token, allowed_domains, created_at FROM projects ORDER BY created_at ASC');
+    return db.many('SELECT id, name, fb_pixel_id, fb_access_token, allowed_domains, custom_domain, tracking_mode, created_at FROM projects ORDER BY created_at ASC');
   },
   async createProject(data) {
     return db.one(
-      'INSERT INTO projects (name, fb_pixel_id, fb_access_token, allowed_domains) VALUES ($1, $2, $3, $4) RETURNING *',
-      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains]
+      'INSERT INTO projects (name, fb_pixel_id, fb_access_token, allowed_domains, custom_domain, tracking_mode) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains, data.custom_domain || null, data.tracking_mode || 'script']
     );
   },
   async updateProject(id, data) {
     return db.one(
-      'UPDATE projects SET name=$1, fb_pixel_id=$2, fb_access_token=$3, allowed_domains=$4, updated_at=NOW() WHERE id=$5 RETURNING *',
-      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains, id]
+      'UPDATE projects SET name=$1, fb_pixel_id=$2, fb_access_token=$3, allowed_domains=$4, custom_domain=$5, tracking_mode=$6, updated_at=NOW() WHERE id=$7 RETURNING *',
+      [data.name, data.fb_pixel_id, data.fb_access_token, data.allowed_domains, data.custom_domain || null, data.tracking_mode || 'script', id]
     );
   },
   async deleteProject(id) {

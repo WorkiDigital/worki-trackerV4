@@ -40,6 +40,20 @@ router.delete('/projects/:projectId', async (req, res) => {
   } catch (err) { console.error('Erro excluir projeto:', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+// Verifica se CNAME do subdomínio do cliente aponta para tracker.workidigital.tech
+router.get('/dns-check', async (req, res) => {
+  const { domain } = req.query;
+  if (!domain) return res.status(400).json({ error: 'Informe o domínio' });
+  try {
+    const dns = require('dns').promises;
+    const records = await dns.resolveCname(domain).catch(() => []);
+    const ok = records.some(r => r.includes('workidigital.tech'));
+    res.json({ domain, ok, records });
+  } catch (err) {
+    res.json({ domain, ok: false, records: [] });
+  }
+});
+
 router.get('/config', (req, res) => {
   res.json({
     hotmart_token: process.env.HOTMART_TOKEN || null,
