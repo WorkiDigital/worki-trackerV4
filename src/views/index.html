@@ -13,6 +13,7 @@
     :root {
       --bg: #050810;
       --bg2: #0b0f1a;
+      --bg-gradient-end: rgba(5, 8, 16, 0.98);
       --glass: rgba(12, 18, 35, 0.7);
       --glass2: rgba(18, 26, 48, 0.5);
       --border: rgba(255, 255, 255, 0.05);
@@ -42,27 +43,28 @@
     [data-theme="light"] {
       --bg: #f8fafc;
       --bg2: #ffffff;
-      --glass: rgba(255, 255, 255, 0.7);
-      --glass2: rgba(241, 245, 249, 0.6);
-      --border: rgba(0, 0, 0, 0.05);
-      --border2: rgba(0, 0, 0, 0.08);
+      --bg-gradient-end: #f1f5f9;
+      --glass: rgba(255, 255, 255, 0.85);
+      --glass2: rgba(241, 245, 249, 0.7);
+      --border: rgba(0, 0, 0, 0.08);
+      --border2: rgba(0, 0, 0, 0.12);
       --shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.05);
-      --shadow-hover: 0 8px 24px -4px rgba(16, 185, 129, 0.15);
+      --shadow-hover: 0 8px 24px -4px rgba(5, 150, 105, 0.15);
       --text: #0f172a;
-      --text2: #475569;
+      --text2: #334155;
       --text3: #64748b;
-      --emerald: #10b981;
-      --emerald-g: rgba(16, 185, 129, 0.1);
-      --emerald-d: #059669;
-      --cyan: #06b6d4;
-      --blue: #3b82f6;
-      --purple: #8b5cf6;
-      --pink: #ec4899;
-      --orange: #f97316;
-      --orange-g: rgba(249, 115, 22, 0.1);
-      --red: #ef4444;
-      --red-g: rgba(239, 68, 68, 0.1);
-      --yellow: #eab308;
+      --emerald: #059669;
+      --emerald-g: rgba(5, 150, 105, 0.1);
+      --emerald-d: #047857;
+      --cyan: #0891b2;
+      --blue: #2563eb;
+      --purple: #7c3aed;
+      --pink: #db2777;
+      --orange: #ea580c;
+      --orange-g: rgba(234, 88, 12, 0.1);
+      --red: #dc2626;
+      --red-g: rgba(220, 38, 38, 0.1);
+      --yellow: #ca8a04;
       --scheme: light
     }
 
@@ -412,7 +414,7 @@
     .sidebar {
       width: 230px;
       flex-shrink: 0;
-      background: linear-gradient(180deg, var(--bg2), rgba(5,8,16,0.98));
+      background: linear-gradient(180deg, var(--bg2), var(--bg-gradient-end));
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
